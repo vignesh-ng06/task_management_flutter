@@ -7,7 +7,7 @@ class AuthRepository {
    AuthRepository(this.api);
 
    Future<Map<String, dynamic>>  login(String email, String password) async {
-     return api.post('api/auth/login',{
+     return api.post('/auth/login',{
        'email': email,
        'password': password
      });

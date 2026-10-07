@@ -10,6 +10,12 @@ import '../data/models/task_model.dart';
 import 'widgets/task_card.dart';
 import 'task_detail_screen.dart';
 
+import '../../notifications/ui/notification_screen.dart';
+import '../../notifications/ui/widgets/notification_badge.dart';
+
+import '../../notifications/bloc/notification_bloc.dart';
+import '../../notifications/bloc/notification_event.dart';
+
 class TasksScreen extends StatelessWidget {
   const TasksScreen({super.key});
 
@@ -19,10 +25,18 @@ class TasksScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('My Tasks'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              // Notifications screen coming next
+          NotificationBadge(
+            child: const Icon(Icons.notifications_outlined),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationScreen()),
+              ).then((_) {
+                // Refresh the badge after returning
+                context.read<NotificationBloc>().add(
+                  NotificationsUnreadCountRequested(),
+                );
+              });
             },
           ),
           IconButton(
