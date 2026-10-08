@@ -24,28 +24,28 @@ class TasksScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Tasks'),
-        actions: [
-          NotificationBadge(
-            child: const Icon(Icons.notifications_outlined),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const NotificationScreen()),
-              ).then((_) {
-                // Refresh the badge after returning
-                context.read<NotificationBloc>().add(
-                  NotificationsUnreadCountRequested(),
-                );
-              });
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              context.read<AuthBloc>().add(AuthLogoutRequested());
-            },
-          ),
-        ],
+        // actions: [
+        //   NotificationBadge(
+        //     child: const Icon(Icons.notifications_outlined),
+        //     onTap: () {
+        //       Navigator.push(
+        //         context,
+        //         MaterialPageRoute(builder: (_) => const NotificationScreen()),
+        //       ).then((_) {
+        //         // Refresh the badge after returning
+        //         context.read<NotificationBloc>().add(
+        //           NotificationsUnreadCountRequested(),
+        //         );
+        //       });
+        //     },
+        //   ),
+        //   IconButton(
+        //     icon: const Icon(Icons.logout),
+        //     onPressed: () {
+        //       context.read<AuthBloc>().add(AuthLogoutRequested());
+        //     },
+        //   ),
+        // ],
       ),
       body: BlocBuilder<TaskBloc, TaskState>(
         builder: (context, state) {

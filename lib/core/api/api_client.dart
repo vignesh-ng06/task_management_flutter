@@ -19,7 +19,8 @@ class ApiClient {
         if (_token != null) 'Authorization': 'Bearer $_token',
       };
 
-  Future<Map<String, dynamic>> get(String path) async {
+  Future<dynamic> get(String path) async {
+    log('GET $path request');
     final res = await _client.get(
       Uri.parse('$baseUrl$path'),
       headers: _headers(),
@@ -38,7 +39,7 @@ class ApiClient {
     );
 
     log('POST $path response: ${res.statusCode} ${res.body}'); // Log the response
-    return _handle(res);
+    return _handle(res) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> put(
@@ -50,7 +51,7 @@ class ApiClient {
       headers: _headers(),
       body: jsonEncode(body),
     );
-    return _handle(res);
+    return _handle(res) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> patch(
@@ -66,7 +67,7 @@ class ApiClient {
      
     );
     log('PATCH $path response: ${res.statusCode} ${res.body}'); // Log the response
-    return _handle(res);
+    return _handle(res) as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> delete(String path) async {
@@ -74,21 +75,24 @@ class ApiClient {
       Uri.parse('$baseUrl$path'),
       headers: _headers(),
     );
-    return _handle(res);
+    return _handle(res) as Map<String, dynamic>;
   }
 
-  Map<String, dynamic> _handle(http.Response res) {
+  dynamic _handle(http.Response res) {
     final body = res.body.isEmpty
         ? <String, dynamic>{}
-        : jsonDecode(res.body) as Map<String, dynamic>;
+        : jsonDecode(res.body);
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return body;
     }
 
+    final errorBody = body is Map<String, dynamic> ? body : <String, dynamic>{};
     throw ApiException(
       statusCode: res.statusCode,
-      message: body['error'] ?? body['message'] ?? 'Something went wrong',
+      message: errorBody['error'] ??
+          errorBody['message'] ??
+          'Something went wrong',
     );
   }
 }

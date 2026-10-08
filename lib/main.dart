@@ -15,6 +15,8 @@ import 'features/notifications/data/notification_repository.dart';
 import 'features/tasks/bloc/task_bloc.dart';
 import 'features/tasks/data/task_repository.dart';
 import 'features/tasks/ui/tasks_screen.dart';
+import 'app_shell.dart';
+import 'features/users/data/user_repository.dart';
 
 void main() {
   runApp(const TaskApp());
@@ -30,12 +32,15 @@ class TaskApp extends StatelessWidget {
     final authRepo = AuthRepository(api);
     final taskRepo = TaskRepository(api);
     final notifRepo = NotificationRepository(api);
+    final userRepo = UserRepository(api);
 
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider.value(value: api),
         RepositoryProvider.value(value: taskRepo),
         RepositoryProvider.value(value: notifRepo),
+        RepositoryProvider.value(value: userRepo),
+        
       ],
       child: MultiBlocProvider(
         providers: [
@@ -64,8 +69,8 @@ class AuthGate extends StatelessWidget {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state.status == AuthStatus.authenticated) {
-          context.read<TaskBloc>().add(const TasksLoadRequested()); 
-          context.read<NotificationBloc>().add(NotificationsUnreadCountRequested());
+          context.read<TaskBloc>().add(const TasksLoadRequested());
+          context.read<NotificationBloc>().add( NotificationsUnreadCountRequested());
         }
       },
       child: BlocBuilder<AuthBloc, AuthState>(
@@ -76,7 +81,7 @@ class AuthGate extends StatelessWidget {
             );
           }
           if (state.status == AuthStatus.authenticated) {
-            return const TasksScreen();
+            return const AppShell();
           }
           return const LoginScreen();
         },
