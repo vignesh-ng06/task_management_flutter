@@ -44,4 +44,63 @@ Future<Comment> addComment(int taskId, String message) async {
   return Comment.fromJson(data);
 }
 
+/// POST /tasks
+Future<Task> createTask({
+  required String title,
+  String? description,
+  required int projectId,
+  int? assignedTo,
+  required String priority, // 'HIGH' | 'MEDIUM' | 'LOW'
+  DateTime? dueDate,
+}) async {
+  final body = <String, dynamic>{
+    'title': title,
+    'projectId': projectId,
+    'priority': priority,
+  };
+  if (description != null && description.isNotEmpty) {
+    body['description'] = description;
+  }
+  if (assignedTo != null) body['assignedTo'] = assignedTo;
+  if (dueDate != null) body['dueDate'] = dueDate.toIso8601String();
+
+  final data = await _api.post('/tasks/create', body);
+  return Task.fromJson(data);
+}
+
+/// PUT /tasks/:id
+Future<Task> updateTask(
+  int id, {
+  String? title,
+  String? description,
+  String? priority,
+  DateTime? dueDate,
+  bool clearDueDate = false,
+  int? assignedTo,
+  bool clearAssignee = false,
+}) async {
+  final body = <String, dynamic>{};
+  if (title != null) body['title'] = title;
+  if (description != null) body['description'] = description;
+  if (priority != null) body['priority'] = priority;
+  if (clearDueDate) {
+    body['dueDate'] = null;
+  } else if (dueDate != null) {
+    body['dueDate'] = dueDate.toIso8601String();
+  }
+  if (clearAssignee) {
+    body['assignedTo'] = null;
+  } else if (assignedTo != null) {
+    body['assignedTo'] = assignedTo;
+  }
+
+  final data = await _api.put('/tasks/update/$id', body);
+  return Task.fromJson(data);
+}
+
+/// DELETE /tasks/:id (soft)
+Future<void> deleteTask(int id) async {
+  await _api.delete('/tasks/delete/$id');
+}
+
 }

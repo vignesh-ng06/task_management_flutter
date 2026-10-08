@@ -17,6 +17,8 @@ import 'features/tasks/data/task_repository.dart';
 import 'features/tasks/ui/tasks_screen.dart';
 import 'app_shell.dart';
 import 'features/users/data/user_repository.dart';
+import 'features/projects/data/project_repository.dart';
+import 'core/theme/app_theme.dart';
 
 void main() {
   runApp(const TaskApp());
@@ -29,10 +31,11 @@ class TaskApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final api = ApiClient();
     final storage = TokenStorage();
-    final authRepo = AuthRepository(api);
+    final authRepo = AuthRepository(api); 
     final taskRepo = TaskRepository(api);
     final notifRepo = NotificationRepository(api);
     final userRepo = UserRepository(api);
+    final projectRepo = ProjectRepository(api);
 
     return MultiRepositoryProvider(
       providers: [
@@ -40,6 +43,7 @@ class TaskApp extends StatelessWidget {
         RepositoryProvider.value(value: taskRepo),
         RepositoryProvider.value(value: notifRepo),
         RepositoryProvider.value(value: userRepo),
+        RepositoryProvider.value(value: projectRepo),
         
       ],
       child: MultiBlocProvider(
@@ -53,7 +57,7 @@ class TaskApp extends StatelessWidget {
         ],
         child: MaterialApp(
           title: 'Task App',
-          theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
+          theme: AppTheme.light(),
           home: const AuthGate(),
         ),
       ),

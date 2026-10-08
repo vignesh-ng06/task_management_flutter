@@ -4,8 +4,9 @@ import '../../data/models/task_model.dart';
 class TaskCard extends StatelessWidget {
   final Task task;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
-  const TaskCard({super.key, required this.task, this.onTap});
+  const TaskCard({super.key, required this.task, this.onTap, this.onLongPress});
 
   Color get _priorityColor {
     switch (task.priority) {
@@ -41,6 +42,7 @@ class TaskCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(14),

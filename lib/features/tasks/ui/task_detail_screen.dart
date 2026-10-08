@@ -73,6 +73,9 @@ class _TaskBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final createdAt = task.createdAt.toLocal();
+    final localizations = MaterialLocalizations.of(context);
+
     return Column(
       children: [
         Expanded(
@@ -115,7 +118,13 @@ class _TaskBody extends StatelessWidget {
                 const SizedBox(height: 16),
                 _Section(
                   title: 'Created',
-                  child: Text(task.createdAt.toLocal().toString()),
+                  child: Text(
+                    '${localizations.formatMediumDate(createdAt)} at '
+                    '${localizations.formatTimeOfDay(
+                      TimeOfDay.fromDateTime(createdAt),
+                      alwaysUse24HourFormat: false,
+                    )}',
+                  ),
                 ),
 
                 const SizedBox(height: 32),

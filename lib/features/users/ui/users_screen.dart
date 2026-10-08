@@ -8,6 +8,7 @@ import '../bloc/user_state.dart';
 import '../data/user_repository.dart';
 import 'user_form_sheet.dart';
 import '../../auth/data/user_model.dart';
+import 'widgets/user_tile_skeleton.dart';
 
 class UsersScreen extends StatelessWidget {
   const UsersScreen({super.key});
@@ -47,6 +48,7 @@ class _UsersView extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'users-add-user',
         onPressed: () => showUserFormSheet(context),
         icon: const Icon(Icons.person_add),
         label: const Text('Add user'),
@@ -72,7 +74,10 @@ class _UsersView extends StatelessWidget {
         },
         builder: (context, state) {
           if (state.status == UserListStatus.loading && state.users.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return ListView.builder(
+              itemCount: 6,
+              itemBuilder: (_, __) => const UserTileSkeleton(),
+            );
           }
           if (state.status == UserListStatus.error && state.users.isEmpty) {
             return Center(

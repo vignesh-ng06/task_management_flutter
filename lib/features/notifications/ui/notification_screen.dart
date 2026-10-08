@@ -6,16 +6,23 @@ import '../bloc/notification_event.dart';
 import '../bloc/notification_state.dart';
 import '../data/models/notification.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
   @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<NotificationBloc>().add(NotificationsLoadRequested());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) =>
-          NotificationBloc(context.read())..add(NotificationsLoadRequested()),
-      child: const _NotificationView(),
-    );
+    return const _NotificationView();
   }
 }
 
@@ -32,9 +39,9 @@ class _NotificationView extends StatelessWidget {
             builder: (context, state) {
               if (state.unreadCount == 0) return const SizedBox.shrink();
               return TextButton(
-                onPressed: () => context
-                    .read<NotificationBloc>()
-                    .add(NotificationsMarkAllReadRequested()),
+                onPressed: () => context.read<NotificationBloc>().add(
+                  NotificationsMarkAllReadRequested(),
+                ),
                 child: const Text('Mark all read'),
               );
             },
@@ -44,13 +51,13 @@ class _NotificationView extends StatelessWidget {
       body: BlocConsumer<NotificationBloc, NotificationState>(
         listener: (context, state) {
           if (state.error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error!)),
-            );
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(state.error!)));
           }
         },
         builder: (context, state) {
-          if (state.status == NotificationListStatus.loading && state.items.isEmpty) {
+          if (state.status == NotificationListStatus.loading &&
+              state.items.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
           if (state.items.isEmpty) {
@@ -60,14 +67,19 @@ class _NotificationView extends StatelessWidget {
                 children: [
                   Icon(Icons.notifications_none, size: 48, color: Colors.grey),
                   SizedBox(height: 12),
-                  Text('No notifications', style: TextStyle(color: Colors.grey)),
+                  Text(
+                    'No notifications',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ],
               ),
             );
           }
           return RefreshIndicator(
             onRefresh: () async {
-              context.read<NotificationBloc>().add(NotificationsLoadRequested());
+              context.read<NotificationBloc>().add(
+                NotificationsLoadRequested(),
+              );
               await Future.delayed(const Duration(milliseconds: 500));
             },
             child: ListView.separated(
@@ -92,19 +104,27 @@ class _NotificationTile extends StatelessWidget {
 
   IconData get _icon {
     switch (notification.type) {
-      case 'TASK_ASSIGNED': return Icons.assignment_turned_in_outlined;
-      case 'COMMENT_ADDED': return Icons.comment_outlined;
-      case 'STATUS_CHANGED': return Icons.swap_horiz;
-      default: return Icons.notifications_outlined;
+      case 'TASK_ASSIGNED':
+        return Icons.assignment_turned_in_outlined;
+      case 'COMMENT_ADDED':
+        return Icons.comment_outlined;
+      case 'STATUS_CHANGED':
+        return Icons.swap_horiz;
+      default:
+        return Icons.notifications_outlined;
     }
   }
 
   Color get _color {
     switch (notification.type) {
-      case 'TASK_ASSIGNED': return Colors.blue;
-      case 'COMMENT_ADDED': return Colors.green;
-      case 'STATUS_CHANGED': return Colors.orange;
-      default: return Colors.grey;
+      case 'TASK_ASSIGNED':
+        return Colors.blue;
+      case 'COMMENT_ADDED':
+        return Colors.green;
+      case 'STATUS_CHANGED':
+        return Colors.orange;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -128,7 +148,11 @@ class _NotificationTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 2),
-            Text(notification.message, maxLines: 2, overflow: TextOverflow.ellipsis),
+            Text(
+              notification.message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 4),
             Text(
               notification.relativeTime,
@@ -138,17 +162,19 @@ class _NotificationTile extends StatelessWidget {
         ),
         trailing: isUnread
             ? Container(
-                width: 8, height: 8,
+                width: 8,
+                height: 8,
                 decoration: const BoxDecoration(
-                  color: Colors.blue, shape: BoxShape.circle,
+                  color: Colors.blue,
+                  shape: BoxShape.circle,
                 ),
               )
             : null,
         onTap: () {
           if (isUnread) {
-            context
-                .read<NotificationBloc>()
-                .add(NotificationMarkReadRequested(notification.id));
+            context.read<NotificationBloc>().add(
+              NotificationMarkReadRequested(notification.id),
+            );
           }
         },
       ),
