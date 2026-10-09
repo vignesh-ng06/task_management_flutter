@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import '../../../core/api/api_client.dart';
 import '../data/task_repository.dart';
 import 'task_event.dart';
@@ -12,19 +11,23 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   TaskBloc(this._repo) : super(const TaskState()) {
     on<TasksLoadRequested>(_onLoad);
     on<TasksRefreshRequested>(_onLoad);
+    on<TaskModeChanged>(_onModeChange);
+    on<TaskFiltersChanged>(_onFiltersChange);
+    on<TaskFiltersCleared>(_onFiltersCleared);
     on<TaskStatusUpdateRequested>(_onStatusUpdate);
     on<TaskCreateRequested>(_onCreate);
-    on<TaskDeleteRequested>(_onDelete);
     on<TaskUpdateRequested>(_onUpdate);
+    on<TaskDeleteRequested>(_onDelete);
   }
 
-    /// Called by AppShell after login
   void setCurrentUserId(int id) => _currentUserId = id;
 
-  Future<void> _onLoad(TaskEvent event, Emitter<TaskState> emit) async {
+Future<void> _fetchAndEmit(Emitter<TaskState> emit) async {
     emit(state.copyWith(status: TaskListStatus.loading, clearError: true));
     try {
-      final tasks = await _repo.getMyTasks();
+      final tasks = state.mode == TaskMode.mine
+          ? await _repo.getMyTasks(filters: state.filters)
+          : await _repo.listTasks(filters: state.filters);
       emit(state.copyWith(status: TaskListStatus.loaded, tasks: tasks));
     } on ApiException catch (e) {
       emit(state.copyWith(status: TaskListStatus.error, error: e.message));
@@ -36,6 +39,33 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         ),
       );
     }
+  }
+
+  Future<void> _onLoad(TaskEvent event, Emitter<TaskState> emit) =>
+      _fetchAndEmit(emit);
+
+  Future<void> _onModeChange(
+    TaskModeChanged event,
+    Emitter<TaskState> emit,
+  ) async {
+    emit(state.copyWith(mode: event.mode));
+    await _fetchAndEmit(emit);
+  }
+
+Future<void> _onFiltersChange(
+    TaskFiltersChanged event,
+    Emitter<TaskState> emit,
+  ) async {
+    emit(state.copyWith(filters: event.filters));
+    await _fetchAndEmit(emit); // always refetch
+  }
+
+  Future<void> _onFiltersCleared(
+    TaskFiltersCleared event,
+    Emitter<TaskState> emit,
+  ) async {
+    emit(state.copyWith(filters: const TaskFilters()));
+    await _fetchAndEmit(emit);
   }
 
   Future<void> _onStatusUpdate(
@@ -61,7 +91,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     }
   }
 
-Future<void> _onCreate(
+  Future<void> _onCreate(
     TaskCreateRequested event,
     Emitter<TaskState> emit,
   ) async {
@@ -75,32 +105,16 @@ Future<void> _onCreate(
         dueDate: event.dueDate,
       );
 
-      // Only prepend if the task is assigned to me
-      if (_currentUserId != null && task.assignedTo == _currentUserId) {
+      // In "mine" mode, only prepend if assigned to me
+      // In "all" mode, always prepend
+      final shouldPrepend = state.mode == TaskMode.all ||
+          (_currentUserId != null && task.assignedTo == _currentUserId);
+
+      if (shouldPrepend) {
         emit(state.copyWith(tasks: [task, ...state.tasks]));
       }
     } on ApiException catch (e) {
       emit(state.copyWith(error: e.message));
-    }
-  }
-
-
-  Future<void> _onDelete(
-    TaskDeleteRequested event,
-    Emitter<TaskState> emit,
-  ) async {
-    final index = state.tasks.indexWhere((t) => t.id == event.id);
-    if (index == -1) return;
-    final original = state.tasks[index];
-
-    final optimistic = [...state.tasks]..removeAt(index);
-    emit(state.copyWith(tasks: optimistic));
-
-    try {
-      await _repo.deleteTask(event.id);
-    } on ApiException catch (e) {
-      final rolledBack = [...state.tasks]..insert(index, original);
-      emit(state.copyWith(tasks: rolledBack, error: e.message));
     }
   }
 
@@ -112,7 +126,6 @@ Future<void> _onCreate(
     if (index == -1) return;
     final original = state.tasks[index];
 
-    // Optimistic
     final optimistic = original.copyWith(
       title: event.title,
       description: event.description,
@@ -141,6 +154,25 @@ Future<void> _onCreate(
       emit(state.copyWith(tasks: confirmed));
     } on ApiException catch (e) {
       final rolledBack = [...state.tasks]..[index] = original;
+      emit(state.copyWith(tasks: rolledBack, error: e.message));
+    }
+  }
+
+  Future<void> _onDelete(
+    TaskDeleteRequested event,
+    Emitter<TaskState> emit,
+  ) async {
+    final index = state.tasks.indexWhere((t) => t.id == event.id);
+    if (index == -1) return;
+    final original = state.tasks[index];
+
+    final optimistic = [...state.tasks]..removeAt(index);
+    emit(state.copyWith(tasks: optimistic));
+
+    try {
+      await _repo.deleteTask(event.id);
+    } on ApiException catch (e) {
+      final rolledBack = [...state.tasks]..insert(index, original);
       emit(state.copyWith(tasks: rolledBack, error: e.message));
     }
   }

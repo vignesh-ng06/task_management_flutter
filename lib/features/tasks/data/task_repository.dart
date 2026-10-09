@@ -3,18 +3,31 @@ import 'dart:math';
 import '../../../core/api/api_client.dart';
 import 'models/task_model.dart';
 import 'models/comment.dart';
+import '../bloc/task_state.dart';
 
 class TaskRepository {
   final ApiClient _api;
   TaskRepository(this._api);
 
   /// GET /tasks/me
-  Future<List<Task>> getMyTasks() async {
-    final data = await _api.get('/tasks/me');
-    final list = (data['data'] as List).cast<Map<String, dynamic>>();
-    return list.map(Task.fromJson).toList();
+Future<List<Task>> getMyTasks({TaskFilters? filters}) async {
+  final q = <String, String>{};
+  if (filters != null) {
+    if (filters.status != null) q['status'] = filters.status!;
+    if (filters.priority != null) q['priority'] = filters.priority!;
+    if (filters.projectId != null) q['projectId'] = '${filters.projectId}';
+    if (filters.search.isNotEmpty) q['search'] = filters.search;
+    // Note: assignedTo is intentionally ignored — /tasks/me is always "me"
   }
 
+  final query = q.isEmpty
+      ? ''
+      : '?' + q.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
+
+  final data = await _api.get('/tasks/me$query');
+  final list = (data['data'] as List).cast<Map<String, dynamic>>();
+  return list.map(Task.fromJson).toList();
+}
   /// GET /tasks/:id
   Future<Task> getTask(int id) async {
     final data = await _api.get('/tasks/$id');
@@ -102,5 +115,26 @@ Future<Task> updateTask(
 Future<void> deleteTask(int id) async {
   await _api.delete('/tasks/delete/$id');
 }
+
+
+Future<List<Task>> listTasks({TaskFilters? filters}) async {
+  final q = <String, String>{};
+  if (filters != null) {
+    if (filters.status != null) q['status'] = filters.status!;
+    if (filters.priority != null) q['priority'] = filters.priority!;
+    if (filters.projectId != null) q['projectId'] = '${filters.projectId}';
+    if (filters.assignedTo != null) q['assignedTo'] = '${filters.assignedTo}';
+    if (filters.search.isNotEmpty) q['search'] = filters.search;
+  }
+
+  final query = q.isEmpty
+      ? ''
+      : '?' + q.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
+
+  final data = await _api.get('/tasks/getAllTasks$query');
+  final list = (data['data'] as List).cast<Map<String, dynamic>>();
+  return list.map(Task.fromJson).toList();
+}
+
 
 }

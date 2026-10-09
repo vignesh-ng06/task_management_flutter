@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'task_state.dart';
 
 abstract class TaskEvent extends Equatable {
   const TaskEvent();
@@ -78,4 +79,22 @@ class TaskUpdateRequested extends TaskEvent {
         id, title, description, priority, dueDate,
         clearDueDate, assignedTo, clearAssignee,
       ];
+
+      
 }
+
+class TaskModeChanged extends TaskEvent {
+  final TaskMode mode;
+  const TaskModeChanged(this.mode);
+  @override
+  List<Object?> get props => [mode];
+}
+
+class TaskFiltersChanged extends TaskEvent {
+  final TaskFilters filters;
+  const TaskFiltersChanged(this.filters);
+  @override
+  List<Object?> get props => [filters];
+}
+
+class TaskFiltersCleared extends TaskEvent {}

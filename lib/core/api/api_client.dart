@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class ApiClient {
   // Android emulator uses 10.0.2.2 to reach your Mac's localhost
-  static const String baseUrl = 'http://192.168.1.19:4000/api';
+  static const String baseUrl = 'http://192.168.1.15:4000/api';
   // If you run on iOS simulator later, use: http://localhost:5000
   // If on Chrome (web), use: http://localhost:5000
 

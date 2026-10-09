@@ -5,8 +5,9 @@ class TaskCard extends StatelessWidget {
   final Task task;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final bool showAssignee;
 
-  const TaskCard({super.key, required this.task, this.onTap, this.onLongPress});
+  const TaskCard({super.key, required this.task, this.onTap, this.onLongPress , this.showAssignee = false});
 
   Color get _priorityColor {
     switch (task.priority) {
@@ -102,6 +103,12 @@ class TaskCard extends StatelessWidget {
                     color: task.isOverdue ? Colors.red : Colors.grey,
                     icon: Icons.schedule,
                   ),
+                  if (showAssignee)
+                    _Chip(
+                      text: task.assigneeName,
+                      color: Colors.teal,
+                      icon: Icons.person_outline,
+                    ),
                 ],
               ),
             ],
