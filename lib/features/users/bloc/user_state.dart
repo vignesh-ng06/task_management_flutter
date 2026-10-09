@@ -11,6 +11,7 @@ class UserState extends Equatable {
   final String? successMessage;
   final String roleFilter; // 'all' | 'admin' | 'manager' | 'employee'
   final bool includeInactive;
+  final String searchQuery;
 
   const UserState({
     this.status = UserListStatus.initial,
@@ -19,6 +20,7 @@ class UserState extends Equatable {
     this.successMessage,
     this.roleFilter = 'all',
     this.includeInactive = false,
+    this.searchQuery = '',
   });
 
   UserState copyWith({
@@ -28,6 +30,7 @@ class UserState extends Equatable {
     String? successMessage,
     String? roleFilter,
     bool? includeInactive,
+    String? searchQuery,
     bool clearMessages = false,
   }) {
     return UserState(
@@ -39,13 +42,27 @@ class UserState extends Equatable {
           : (successMessage ?? this.successMessage),
       roleFilter: roleFilter ?? this.roleFilter,
       includeInactive: includeInactive ?? this.includeInactive,
+      searchQuery: searchQuery ?? this.searchQuery,
     );
   }
 
   List<User> get filteredUsers {
-    if (roleFilter == 'all') return users;
-    return users.where((u) => u.role == roleFilter).toList();
+    Iterable<User> list = users;
+
+    if (roleFilter != 'all') {
+      list = list.where((u) => u.role == roleFilter);
+    }
+
+    if (searchQuery.trim().isNotEmpty) {
+      final q = searchQuery.trim().toLowerCase();
+      list = list.where((u) =>
+          (u.name?.toLowerCase().contains(q) ?? false) ||
+          u.email.toLowerCase().contains(q));
+    }
+
+    return list.toList();
   }
+
 
   @override
   List<Object?> get props => [

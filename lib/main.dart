@@ -19,6 +19,7 @@ import 'app_shell.dart';
 import 'features/users/data/user_repository.dart';
 import 'features/projects/data/project_repository.dart';
 import 'core/theme/app_theme.dart';
+import 'features/home/data/dashboard_repository.dart';
 
 void main() {
   runApp(const TaskApp());
@@ -29,13 +30,14 @@ class TaskApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final api = ApiClient();
+    final api = ApiClient(); 
     final storage = TokenStorage();
     final authRepo = AuthRepository(api); 
     final taskRepo = TaskRepository(api);
     final notifRepo = NotificationRepository(api);
     final userRepo = UserRepository(api);
     final projectRepo = ProjectRepository(api);
+    final dashboardRepo = DashboardRepository(api);
 
     return MultiRepositoryProvider(
       providers: [
@@ -44,7 +46,7 @@ class TaskApp extends StatelessWidget {
         RepositoryProvider.value(value: notifRepo),
         RepositoryProvider.value(value: userRepo),
         RepositoryProvider.value(value: projectRepo),
-        
+        RepositoryProvider.value(value: dashboardRepo),
       ],
       child: MultiBlocProvider(
         providers: [
