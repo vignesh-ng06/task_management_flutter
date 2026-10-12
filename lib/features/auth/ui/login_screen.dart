@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -31,15 +33,26 @@ class _LoginScreenState extends State<LoginScreen> {
     context.read<AuthBloc>().add(AuthLoginSubmitted(email, password));
   }
 
+  void _openRegister() {
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: context.read<AuthBloc>(),
+          child: const RegisterScreen(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state.error != null && !state.isLoading) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error!)),
-            );
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(state.error!)));
           }
         },
         child: Center(
@@ -86,6 +99,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Text('Login'),
                     );
                   },
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Don't have an account?",
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                    TextButton(
+                      onPressed: _openRegister,
+                      child: const Text('Create one'),
+                    ),
+                  ],
                 ),
               ],
             ),

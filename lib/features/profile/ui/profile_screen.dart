@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:task_app/features/profile/ui/profile_edit_sheet.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
@@ -56,6 +57,15 @@ class ProfileScreen extends StatelessWidget {
                 _InfoTile(
                   label: 'Company ID',
                   value: user.companyId?.toString() ?? 'Not available',
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () => showProfileEditSheet(context),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Edit profile'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
                 ),
                 const SizedBox(height: 32),
                 FilledButton.icon(

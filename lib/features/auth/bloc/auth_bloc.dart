@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../../core/api/api_client.dart';
 import '../../../core/storage/token_storage.dart';
 import '../data/auth_repository.dart';
@@ -15,14 +16,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required AuthRepository repo,
     required ApiClient api,
     required TokenStorage storage,
-  })  : _repo = repo,
-        _api = api,
-        _storage = storage,
-        super(const AuthState.unknown()) {
+  }) : _repo = repo,
+       _api = api,
+       _storage = storage,
+       super(const AuthState.unknown()) {
     on<AuthCheckRequested>(_onCheckRequested);
     on<AuthLoginSubmitted>(_onLoginSubmitted);
     on<AuthRegisterSubmitted>(_onRegisterSubmitted);
     on<AuthLogoutRequested>(_onLogout);
+    on<AuthProfileUpdateRequested>(_onProfileUpdate);
   }
 
   Future<void> _onCheckRequested(
@@ -52,7 +54,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLoginSubmitted event,
     Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
+    emit(
+      state.copyWith(
+        isLoading: true,
+        clearError: true,
+        clearSuccessMessage: true,
+      ),
+    );
     try {
       final data = await _repo.login(event.email, event.password);
       final token = data['token'] as String;
@@ -73,15 +81,33 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthRegisterSubmitted event,
     Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, clearError: true));
+    emit(
+      state.copyWith(
+        isLoading: true,
+        clearError: true,
+        clearSuccessMessage: true,
+      ),
+    );
     try {
       final data = await _repo.register(
         email: event.email,
         password: event.password,
         name: event.name,
         companyName: event.companyName,
+        industry: event.industry,
+        website: event.website,
       );
-      final token = data['token'] as String;
+
+      final token = data['token'];
+      if (token is! String || token.isEmpty) {
+        emit(
+          const AuthState.unauthenticated(
+            successMessage: 'Registration successful. Please log in.',
+          ),
+        );
+        return;
+      }
+
       final user = User.fromJson(data['user'] as Map<String, dynamic>);
 
       await _storage.saveToken(token);
@@ -102,5 +128,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     await _storage.clear();
     _api.setToken(null);
     emit(const AuthState.unauthenticated());
+  }
+
+  Future<void> _onProfileUpdate(
+    AuthProfileUpdateRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    final currentUser = state.user;
+    if (currentUser == null) return;
+
+    try {
+      final updated = await _repo.updateMe(
+        name: event.name,
+        currentPassword: event.currentPassword,
+        newPassword: event.newPassword,
+      );
+      emit(state.copyWith(user: updated, error: null));
+    } on ApiException catch (e) {
+      emit(state.copyWith(error: e.message));
+    } catch (_) {
+      emit(state.copyWith(error: 'Failed to update profile'));
+    }
   }
 }
