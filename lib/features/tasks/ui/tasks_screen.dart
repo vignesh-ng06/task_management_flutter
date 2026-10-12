@@ -56,6 +56,7 @@ Widget build(BuildContext context) {
       ),
       floatingActionButton: _canManage(context)
           ? FloatingActionButton.extended(
+              heroTag: 'tasks-new-task',
               onPressed: () => showTaskFormSheet(context),
               icon: const Icon(Icons.add),
               label: const Text('New task'),

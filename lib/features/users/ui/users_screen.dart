@@ -57,6 +57,7 @@ class _UsersViewState extends State<_UsersView> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'users-add-user',
         onPressed: () => showUserFormSheet(context),
         icon: const Icon(Icons.person_add),
         label: const Text('Add user'),

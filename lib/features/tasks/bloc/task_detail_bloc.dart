@@ -1,8 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/api/api_client.dart';
-import '../data/task_repository.dart';
+import 'package:task_app/core/api/api_client.dart';
+import 'package:task_app/features/tasks/data/task_repository.dart';
+
 import 'task_detail_event.dart';
 import 'task_detail_state.dart';
+
+import '../data/models/comment.dart';
 
 class TaskDetailBloc extends Bloc<TaskDetailEvent, TaskDetailState> {
   final TaskRepository _repo;
@@ -12,6 +15,8 @@ class TaskDetailBloc extends Bloc<TaskDetailEvent, TaskDetailState> {
     on<TaskDetailStatusChanged>(_onStatusChange);
     on<TaskCommentsLoadRequested>(_onLoadComments);
     on<TaskCommentSubmitted>(_onSubmitComment);
+    on<TaskCommentUpdateRequested>(_onUpdateComment);
+    on<TaskCommentDeleteRequested>(_onDeleteComment);
   }
 
   Future<void> _onLoad(
@@ -40,7 +45,11 @@ class TaskDetailBloc extends Bloc<TaskDetailEvent, TaskDetailState> {
     emit(state.copyWith(status: TaskDetailStatus.updating, clearError: true));
     try {
       final updated = await _repo.updateStatus(event.taskId, event.newStatus);
-      emit(state.copyWith(status: TaskDetailStatus.loaded, task: updated));
+      // Preserve comments that the update response doesn't include.
+      final merged = updated.copyWith(
+        comments: state.task?.comments ?? const [],
+      );
+      emit(state.copyWith(status: TaskDetailStatus.loaded, task: merged));
     } on ApiException catch (e) {
       emit(state.copyWith(
         status: TaskDetailStatus.loaded,
@@ -77,4 +86,58 @@ class TaskDetailBloc extends Bloc<TaskDetailEvent, TaskDetailState> {
       emit(state.copyWith(postingComment: false, error: e.message));
     }
   }
+
+
+
+  Future<void> _onUpdateComment(
+    TaskCommentUpdateRequested event,
+    Emitter<TaskDetailState> emit,
+  ) async {
+    // Optimistic update
+    final original = state.comments;
+    final optimistic = original
+        .map(
+          (c) => c.id == event.commentId
+              ? Comment(
+                  id: c.id,
+                  taskId: c.taskId,
+                  userId: c.userId,
+                  message: event.message,
+                  createdAt: c.createdAt,
+                  updatedAt: DateTime.now(),
+                  authorName: c.authorName,
+                  authorEmail: c.authorEmail,
+                  authorRole: c.authorRole,
+                )
+              : c,
+        )
+        .toList();
+    emit(state.copyWith(comments: optimistic));
+
+    try {
+      final updated = await _repo.updateComment(event.commentId, event.message);
+      final confirmed = state.comments
+          .map((c) => c.id == updated.id ? updated : c)
+          .toList();
+      emit(state.copyWith(comments: confirmed));
+    } on ApiException catch (e) {
+      emit(state.copyWith(comments: original, error: e.message));
+    }
+  }
+
+  Future<void> _onDeleteComment(
+    TaskCommentDeleteRequested event,
+    Emitter<TaskDetailState> emit,
+  ) async {
+    final original = state.comments;
+    final optimistic = original.where((c) => c.id != event.commentId).toList();
+    emit(state.copyWith(comments: optimistic));
+
+    try {
+      await _repo.deleteComment(event.commentId);
+    } on ApiException catch (e) {
+      emit(state.copyWith(comments: original, error: e.message));
+    }
+  }
+
 }

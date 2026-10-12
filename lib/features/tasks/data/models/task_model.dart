@@ -1,4 +1,5 @@
 import 'comment.dart';
+import 'task_activity.dart';
 
 class Task {
   final int id;
@@ -21,6 +22,8 @@ class Task {
   // Comments embedded in GET /tasks/:id
   final List<Comment> comments;
 
+  final List<TaskActivity> activities;
+
   Task({
     required this.id,
     required this.title,
@@ -37,6 +40,7 @@ class Task {
     this.creator,
     this.project,
     this.comments = const [],
+    this.activities = const [],
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -55,13 +59,21 @@ class Task {
       assignee: json['assignee'] as Map<String, dynamic>?,
       creator: json['creator'] as Map<String, dynamic>?,
       project: json['project'] as Map<String, dynamic>?,
-      comments: (json['comments'] as List?)
+      comments:
+          (json['comments'] as List?)
               ?.cast<Map<String, dynamic>>()
               .where((c) => c['isActive'] == true)
               .map(Comment.fromJson)
               .toList() ??
           const [],
+      activities:
+          (json['activities'] as List?)
+              ?.cast<Map<String, dynamic>>()
+              .map(TaskActivity.fromJson)
+              .toList() ??
+          const [],
     );
+
   }
 
   // ── UI helpers ────────────────────────────────────────────────

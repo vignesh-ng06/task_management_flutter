@@ -54,6 +54,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       ),
       floatingActionButton: _canManage(context)
           ? FloatingActionButton.extended(
+              heroTag: 'project-detail-new-task',
               onPressed: () async {
                 await showTaskFormSheet(context);
                 _refresh();

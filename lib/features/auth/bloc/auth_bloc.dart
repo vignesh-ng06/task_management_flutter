@@ -64,7 +64,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final data = await _repo.login(event.email, event.password);
       final token = data['token'] as String;
-      final user = User.fromJson(data['user'] as Map<String, dynamic>);
+      final user = _userFromAuthResponse(data);
 
       await _storage.saveToken(token);
       _api.setToken(token);
@@ -108,7 +108,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return;
       }
 
-      final user = User.fromJson(data['user'] as Map<String, dynamic>);
+      final user = _userFromAuthResponse(data);
 
       await _storage.saveToken(token);
       _api.setToken(token);
@@ -149,5 +149,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (_) {
       emit(state.copyWith(error: 'Failed to update profile'));
     }
+  }
+
+  User _userFromAuthResponse(Map<String, dynamic> data) {
+    final user = data['user'] as Map<String, dynamic>;
+    final company = data['company'];
+    return User.fromJson({
+      ...user,
+      if (company is Map<String, dynamic>) 'company': company,
+    });
   }
 }

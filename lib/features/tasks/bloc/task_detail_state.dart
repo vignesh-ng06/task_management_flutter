@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
-import '../data/models/task_model.dart';
-import '../data/models/comment.dart';
+import 'package:task_app/features/tasks/data/models/comment.dart';
+import 'package:task_app/features/tasks/data/models/task_model.dart';
 
 enum TaskDetailStatus { initial, loading, loaded, error, updating }
 

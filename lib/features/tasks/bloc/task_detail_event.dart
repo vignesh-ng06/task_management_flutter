@@ -37,3 +37,19 @@ class TaskCommentSubmitted extends TaskDetailEvent {
   @override
   List<Object?> get props => [taskId, message];
 }
+
+
+class TaskCommentUpdateRequested extends TaskDetailEvent {
+  final int commentId;
+  final String message;
+  const TaskCommentUpdateRequested(this.commentId, this.message);
+  @override
+  List<Object?> get props => [commentId, message];
+}
+
+class TaskCommentDeleteRequested extends TaskDetailEvent {
+  final int commentId;
+  const TaskCommentDeleteRequested(this.commentId);
+  @override
+  List<Object?> get props => [commentId];
+}

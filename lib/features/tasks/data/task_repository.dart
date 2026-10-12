@@ -1,9 +1,8 @@
-import 'dart:math';
-
 import '../../../core/api/api_client.dart';
 import 'models/task_model.dart';
 import 'models/comment.dart';
 import '../bloc/task_state.dart';
+
 
 class TaskRepository {
   final ApiClient _api;
@@ -136,5 +135,15 @@ Future<List<Task>> listTasks({TaskFilters? filters}) async {
   return list.map(Task.fromJson).toList();
 }
 
+Future<Comment> updateComment(int commentId, String message) async {
+  final data = await _api.put('/comments/update/$commentId', {
+    'message': message,
+  });
+  return Comment.fromJson(data);
+}
+
+Future<void> deleteComment(int commentId) async {
+  await _api.delete('/comments/delete/$commentId');
+}
 
 }

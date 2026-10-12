@@ -6,6 +6,9 @@ import '../bloc/task_detail_event.dart';
 import '../bloc/task_detail_state.dart';
 import '../data/models/comment.dart';
 import '../data/models/task_model.dart';
+import 'widgets/activity_timeline.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_state.dart';
 
 class TaskDetailScreen extends StatelessWidget {
   final int taskId;
@@ -84,6 +87,7 @@ class _TaskBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Title + description ──
                 Text(
                   task.title,
                   style: const TextStyle(
@@ -97,6 +101,7 @@ class _TaskBody extends StatelessWidget {
                   ),
                 const SizedBox(height: 24),
 
+                // ── Meta ──
                 _Section(title: 'Status', child: _statusWidget(context)),
                 const SizedBox(height: 16),
                 _Section(
@@ -127,11 +132,11 @@ class _TaskBody extends StatelessWidget {
                   ),
                 ),
 
+                // ── Comments ──
                 const SizedBox(height: 32),
                 const Divider(),
                 const SizedBox(height: 12),
 
-                // ── Comments header ──
                 Row(
                   children: [
                     const Icon(Icons.comment_outlined, size: 20),
@@ -145,7 +150,6 @@ class _TaskBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // ── Comments list ──
                 if (commentsLoading && comments.isEmpty)
                   const Center(
                     child: Padding(
@@ -163,6 +167,27 @@ class _TaskBody extends StatelessWidget {
                   )
                 else
                   ...comments.map((c) => _CommentTile(comment: c)).toList(),
+
+                // ── Activity ──
+                const SizedBox(height: 32),
+                const Divider(),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: const [
+                    Icon(Icons.history, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Activity',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ActivityTimeline(activities: task.activities),
               ],
             ),
           ),
@@ -229,8 +254,23 @@ class _CommentTile extends StatelessWidget {
   final Comment comment;
   const _CommentTile({required this.comment});
 
+  bool _canEdit(BuildContext context) {
+    final user = context.read<AuthBloc>().state.user;
+    return user != null && user.id == comment.userId;
+  }
+
+  bool _canDelete(BuildContext context) {
+    final user = context.read<AuthBloc>().state.user;
+    if (user == null) return false;
+    return user.id == comment.userId || user.role == 'admin';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canEdit = _canEdit(context);
+    final canDelete = _canDelete(context);
+    final hasActions = canEdit || canDelete;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
@@ -262,39 +302,148 @@ class _CommentTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      comment.authorName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13),
+                    Row(
+                      children: [
+                        Text(
+                          comment.authorName,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        if (comment.authorRole == 'admin') ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'ADMIN',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.purple,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     Text(
-                      _relativeTime(comment.createdAt),
+                      _relativeTime(comment.createdAt) +
+                          (comment.wasEdited ? ' · edited' : ''),
                       style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                     ),
                   ],
                 ),
               ),
-              if (comment.authorRole == 'admin')
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.shade50,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'ADMIN',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.purple,
-                    ),
-                  ),
+              if (hasActions)
+                IconButton(
+                  icon: const Icon(Icons.more_vert, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => _showActions(context, canEdit, canDelete),
                 ),
             ],
           ),
           const SizedBox(height: 8),
           Text(comment.message, style: const TextStyle(fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  void _showActions(BuildContext context, bool canEdit, bool canDelete) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (canEdit)
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit comment'),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _showEditDialog(context);
+                },
+              ),
+            if (canDelete)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Delete comment',
+                    style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  _confirmDelete(context);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context) {
+    final ctrl = TextEditingController(text: comment.message);
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Edit comment'),
+        content: TextField(
+          controller: ctrl,
+          maxLines: 4,
+          autofocus: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Message',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final text = ctrl.text.trim();
+              if (text.isEmpty) return;
+              Navigator.pop(dialogCtx);
+              context.read<TaskDetailBloc>().add(
+                    TaskCommentUpdateRequested(comment.id, text),
+                  );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ).then((_) => ctrl.dispose());
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Delete comment?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogCtx);
+              context
+                  .read<TaskDetailBloc>()
+                  .add(TaskCommentDeleteRequested(comment.id));
+            },
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );

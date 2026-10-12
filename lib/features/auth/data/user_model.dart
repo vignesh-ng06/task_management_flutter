@@ -4,6 +4,8 @@ class User {
   final String? name;
   final String role;
   final int? companyId;
+  final String? companyName;
+  final String? industry;
   final bool isActive;
   final DateTime? createdAt;
 
@@ -13,21 +15,32 @@ class User {
     this.name,
     required this.role,
     this.companyId,
+    this.companyName,
+    this.industry,
     this.isActive = true,
     this.createdAt,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) => User(
-        id: json['id'],
-        email: json['email'],
-        name: json['name'],
-        role: json['role'] ?? 'employee',
-        companyId: json['companyId'],
-        isActive: json['isActive'] ?? true,
-        createdAt: json['createdAt'] != null
-            ? DateTime.parse(json['createdAt'])
-            : null,
-      );
+  factory User.fromJson(Map<String, dynamic> json) {
+    final company = json['company'];
+    return User(
+      id: json['id'],
+      email: json['email'],
+      name: json['name'],
+      role: json['role'] ?? 'employee',
+      companyId: json['companyId'],
+      companyName: company is Map<String, dynamic>
+          ? company['name'] as String?
+          : json['companyName'] as String?,
+      industry: company is Map<String, dynamic>
+          ? company['industry'] as String?
+          : json['industry'] as String?,
+      isActive: json['isActive'] ?? true,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : null,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
