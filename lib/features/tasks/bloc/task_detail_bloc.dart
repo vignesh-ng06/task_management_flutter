@@ -13,6 +13,7 @@ class TaskDetailBloc extends Bloc<TaskDetailEvent, TaskDetailState> {
   TaskDetailBloc(this._repo) : super(const TaskDetailState()) {
     on<TaskDetailLoadRequested>(_onLoad);
     on<TaskDetailStatusChanged>(_onStatusChange);
+    on<TaskDetailUpdateRequested>(_onUpdate);
     on<TaskCommentsLoadRequested>(_onLoadComments);
     on<TaskCommentSubmitted>(_onSubmitComment);
     on<TaskCommentUpdateRequested>(_onUpdateComment);
@@ -48,6 +49,7 @@ class TaskDetailBloc extends Bloc<TaskDetailEvent, TaskDetailState> {
       // Preserve comments that the update response doesn't include.
       final merged = updated.copyWith(
         comments: state.task?.comments ?? const [],
+        activities: state.task?.activities ?? const [],
       );
       emit(state.copyWith(status: TaskDetailStatus.loaded, task: merged));
     } on ApiException catch (e) {
@@ -55,6 +57,43 @@ class TaskDetailBloc extends Bloc<TaskDetailEvent, TaskDetailState> {
         status: TaskDetailStatus.loaded,
         error: e.message,
       ));
+    }
+  }
+
+  Future<void> _onUpdate(
+    TaskDetailUpdateRequested event,
+    Emitter<TaskDetailState> emit,
+  ) async {
+    final original = state.task;
+    if (original == null) return;
+
+    emit(state.copyWith(status: TaskDetailStatus.updating, clearError: true));
+    try {
+      final updated = await _repo.updateTask(
+        event.taskId,
+        title: event.title,
+        description: event.description,
+        dueDate: event.dueDate,
+        clearDueDate: event.clearDueDate,
+        assignedTo: event.assignedTo,
+        clearAssignee: event.clearAssignee,
+      );
+      final merged = updated.copyWith(
+        comments: original.comments,
+        activities: original.activities,
+      );
+      emit(state.copyWith(status: TaskDetailStatus.loaded, task: merged));
+    } on ApiException catch (e) {
+      emit(
+        state.copyWith(status: TaskDetailStatus.loaded, error: e.message),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          status: TaskDetailStatus.loaded,
+          error: 'Failed to update task',
+        ),
+      );
     }
   }
 

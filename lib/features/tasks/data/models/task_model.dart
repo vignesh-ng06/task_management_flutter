@@ -73,7 +73,6 @@ class Task {
               .toList() ??
           const [],
     );
-
   }
 
   // ── UI helpers ────────────────────────────────────────────────
@@ -111,6 +110,7 @@ class Task {
     Map<String, dynamic>? assignee,
     Map<String, dynamic>? project,
     List<Comment>? comments,
+    List<TaskActivity>? activities,
   }) {
     return Task(
       id: id,
@@ -128,6 +128,7 @@ class Task {
       creator: creator,
       project: project ?? this.project,
       comments: comments ?? this.comments,
+      activities: activities ?? this.activities,
     );
   }
 
@@ -148,6 +149,7 @@ class Task {
       creator: creator,
       project: project,
       comments: comments,
+      activities: activities,
     );
   }
 
@@ -168,6 +170,7 @@ class Task {
       creator: creator,
       project: project,
       comments: newComments,
+      activities: activities,
     );
   }
 }

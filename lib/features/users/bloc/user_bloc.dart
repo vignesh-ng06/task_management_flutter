@@ -72,65 +72,48 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     }
   }
 
-Future<void> _onUpdate(
-  UserUpdateRequested event,
-  Emitter<UserState> emit,
-) async {
-  emit(state.copyWith(clearMessages: true));
+  Future<void> _onUpdate(
+    UserUpdateRequested event,
+    Emitter<UserState> emit,
+  ) async {
+    emit(state.copyWith(clearMessages: true));
 
-  final index = state.users.indexWhere((u) => u.id == event.id);
-  if (index == -1) return;
-  final original = state.users[index];
+    final index = state.users.indexWhere((u) => u.id == event.id);
+    if (index == -1) return;
+    final original = state.users[index];
 
-  // 1. Optimistic update — UI reflects instantly
-  final optimistic = User(
-    id: original.id,
-    email: original.email,
-    name: event.name ?? original.name,
-    role: event.role ?? original.role,
-    companyId: original.companyId,
-    isActive: original.isActive,
-    createdAt: original.createdAt,
-  );
-  final optimisticList = [...state.users]..[index] = optimistic;
-  emit(state.copyWith(users: optimisticList));
-
-  // 2. Backend call
-  try {
-    final serverUser = await _repo.updateUser(
-      event.id,
-      name: event.name,
-      role: event.role,
-      password: event.password,
+    // 1. Optimistic update — UI reflects instantly
+    final optimistic = User(
+      id: original.id,
+      email: original.email,
+      name: event.name ?? original.name,
+      role: event.role ?? original.role,
+      companyId: original.companyId,
+      isActive: original.isActive,
+      createdAt: original.createdAt,
     );
+    final optimisticList = [...state.users]..[index] = optimistic;
+    emit(state.copyWith(users: optimisticList));
 
-    // 3. Merge server response with any fields it didn't return
-    final merged = User(
-      id: serverUser.id,
-      email: serverUser.email.isNotEmpty ? serverUser.email : original.email,
-      name: serverUser.name ?? event.name ?? original.name,
-      role: serverUser.role,
-      companyId: serverUser.companyId != 0
-          ? serverUser.companyId
-          : original.companyId,
-      isActive: serverUser.isActive,
-      createdAt: serverUser.createdAt ?? original.createdAt,
-    );
+    // 2. Backend call
+    try {
+      await _repo.updateUser(
+        event.id,
+        name: event.name,
+        role: event.role,
+        password: event.password,
+      );
 
-    final confirmed = [...state.users]..[index] = merged;
-    emit(state.copyWith(
-      users: confirmed,
-      successMessage: 'User updated',
-    ));
-  } on ApiException catch (e) {
-    // 4. Rollback on failure
-    final rolledBack = [...state.users]..[index] = original;
-    emit(state.copyWith(
-      users: rolledBack,
-      error: e.message,
-    ));
+      // The update endpoint may return only a message, not a full user object.
+      // The optimistic user already contains the submitted values, so a 2xx
+      // response is enough to confirm the update and notify the form to close.
+      emit(state.copyWith(successMessage: 'User updated'));
+    } on ApiException catch (e) {
+      // 4. Rollback on failure
+      final rolledBack = [...state.users]..[index] = original;
+      emit(state.copyWith(users: rolledBack, error: e.message));
+    }
   }
-}
 
   Future<void> _onDeactivate(
     UserDeactivateRequested event,

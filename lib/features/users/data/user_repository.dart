@@ -29,7 +29,7 @@ class UserRepository {
     return User.fromJson(data);
   }
 
-  Future<User> updateUser(
+  Future<void> updateUser(
     int id, {
     String? name,
     String? role,
@@ -40,8 +40,7 @@ class UserRepository {
     if (role != null) body['role'] = role;
     if (password != null && password.isNotEmpty) body['password'] = password;
 
-    final data = await _api.put('/users/updateUser/$id', body);
-    return User.fromJson(data);
+    await _api.put('/users/updateUser/$id', body);
   }
 
   /// Soft delete — sets isActive = false on backend

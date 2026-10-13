@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../auth/data/user_model.dart';
 import '../bloc/user_bloc.dart';
 import '../bloc/user_event.dart';
+import '../bloc/user_state.dart';
 
 void showUserFormSheet(BuildContext context, {User? existing}) {
   showModalBottomSheet(
@@ -30,7 +31,8 @@ class _UserFormSheetState extends State<_UserFormSheet> {
   final _emailCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  String _role = 'employee';
+  String? _role;
+  bool _isSubmitting = false;
 
   bool get isEdit => widget.existing != null;
 
@@ -53,18 +55,23 @@ class _UserFormSheetState extends State<_UserFormSheet> {
   }
 
   void _submit() {
+    if (_isSubmitting) return;
     if (!_formKey.currentState!.validate()) return;
 
     final email = _emailCtrl.text.trim();
     final name = _nameCtrl.text.trim();
     final password = _passwordCtrl.text;
+    final role = _role;
+    if (role == null) return;
 
     if (isEdit) {
-      context.read<UserBloc>().add(
+      final bloc = context.read<UserBloc>();
+      setState(() => _isSubmitting = true);
+      bloc.add(
         UserUpdateRequested(
           id: widget.existing!.id,
           name: name,
-          role: _role,
+          role: role,
           password: password.isEmpty ? null : password,
         ),
       );
@@ -74,12 +81,11 @@ class _UserFormSheetState extends State<_UserFormSheet> {
           email: email,
           password: password,
           name: name,
-          role: _role,
+          role: role,
         ),
       );
+      Navigator.of(context).pop();
     }
-
-    Navigator.pop(context);
   }
 
   void _confirmDeactivate() {
@@ -130,124 +136,156 @@ class _UserFormSheetState extends State<_UserFormSheet> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
+      child: BlocListener<UserBloc, UserState>(
+        listenWhen: (previous, current) =>
+            previous.successMessage != current.successMessage ||
+            previous.error != current.error,
+        listener: (context, state) {
+          if (state.successMessage == 'User updated') {
+            Navigator.of(context).pop();
+          } else if (state.error != null && mounted) {
+            setState(() => _isSubmitting = false);
+          }
+        },
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                isEdit ? 'Edit user' : 'Create user',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 16),
+                Text(
+                  isEdit ? 'Edit user' : 'Create user',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              TextFormField(
-                controller: _emailCtrl,
-                enabled: !isEdit, // email cannot be changed
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  final email = value?.trim() ?? '';
-                  if (email.isEmpty || !email.contains('@')) {
-                    return 'Enter a valid email';
-                  }
-                  return null;
-                },
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
+                TextFormField(
+                  controller: _emailCtrl,
+                  enabled: !isEdit, // email cannot be changed
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    final email = value?.trim() ?? '';
+                    if (email.isEmpty) {
+                      return 'Enter an email';
+                    }
+                    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                        .hasMatch(email)) {
+                      return 'Enter a valid email';
+                    }
+                    return null;
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _nameCtrl,
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Enter a name'
-                    : null,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              DropdownButtonFormField<String>(
-                value: _role,
-                decoration: const InputDecoration(
-                  labelText: 'Role',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                  DropdownMenuItem(value: 'employee', child: Text('Employee')),
-                  DropdownMenuItem(value: 'manager', child: Text('Manager')),
-                ],
-                onChanged: (v) => setState(() => _role = v ?? 'employee'),
-              ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _passwordCtrl,
-                obscureText: true,
-                validator: (value) {
-                  final password = value ?? '';
-                  if (!isEdit && password.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  if (isEdit && password.isNotEmpty && password.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
-                decoration: InputDecoration(
-                  labelText: isEdit
-                      ? 'New password (leave blank to keep)'
-                      : 'Password',
-                  border: const OutlineInputBorder(),
-                  helperText: isEdit
-                      ? 'Leave empty to keep the current one'
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              FilledButton(
-                onPressed: _submit,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                child: Text(isEdit ? 'Save changes' : 'Create user'),
-              ),
-
-              if (isEdit && !inactive) ...[
                 const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: _confirmDeactivate,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
+
+                TextFormField(
+                  controller: _nameCtrl,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Enter a name';
+                    }
+                    return null;
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    border: OutlineInputBorder(),
                   ),
-                  child: const Text('Deactivate user'),
                 ),
+                const SizedBox(height: 12),
+
+                DropdownButtonFormField<String>(
+                  initialValue: _role,
+                  validator: (value) => value == null ? 'Select a role' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Role',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                    DropdownMenuItem(
+                      value: 'employee',
+                      child: Text('Employee'),
+                    ),
+                    DropdownMenuItem(value: 'manager', child: Text('Manager')),
+                  ],
+                  onChanged: (v) => setState(() => _role = v),
+                ),
+                const SizedBox(height: 12),
+
+                TextFormField(
+                  controller: _passwordCtrl,
+                  obscureText: true,
+                  validator: (value) {
+                    final password = value ?? '';
+                    if (!isEdit && password.isEmpty) {
+                      return 'Enter a password';
+                    }
+                    if (!isEdit && password.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    if (isEdit && password.isNotEmpty && password.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    labelText: isEdit
+                        ? 'New password (leave blank to keep)'
+                        : 'Password',
+                    border: const OutlineInputBorder(),
+                    helperText: isEdit
+                        ? 'Leave empty to keep the current one'
+                        : null,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                FilledButton(
+                  onPressed: _isSubmitting ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(isEdit ? 'Save changes' : 'Create user'),
+                ),
+
+                if (isEdit && !inactive) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: _confirmDeactivate,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                    ),
+                    child: const Text('Deactivate user'),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

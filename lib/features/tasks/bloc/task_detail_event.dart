@@ -21,7 +21,36 @@ class TaskDetailStatusChanged extends TaskDetailEvent {
   List<Object?> get props => [taskId, newStatus];
 }
 
+class TaskDetailUpdateRequested extends TaskDetailEvent {
+  final int taskId;
+  final String? title;
+  final String? description;
+  final DateTime? dueDate;
+  final bool clearDueDate;
+  final int? assignedTo;
+  final bool clearAssignee;
 
+  const TaskDetailUpdateRequested({
+    required this.taskId,
+    this.title,
+    this.description,
+    this.dueDate,
+    this.clearDueDate = false,
+    this.assignedTo,
+    this.clearAssignee = false,
+  });
+
+  @override
+  List<Object?> get props => [
+    taskId,
+    title,
+    description,
+    dueDate,
+    clearDueDate,
+    assignedTo,
+    clearAssignee,
+  ];
+}
 
 class TaskCommentsLoadRequested extends TaskDetailEvent {
   final int taskId;

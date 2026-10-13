@@ -63,6 +63,9 @@ class _UsersViewState extends State<_UsersView> {
         label: const Text('Add user'),
       ),
       body: BlocConsumer<UserBloc, UserState>(
+        listenWhen: (previous, current) =>
+            previous.error != current.error ||
+            previous.successMessage != current.successMessage,
         listener: (context, state) {
           if (state.error != null) {
             ScaffoldMessenger.of(context).showSnackBar(

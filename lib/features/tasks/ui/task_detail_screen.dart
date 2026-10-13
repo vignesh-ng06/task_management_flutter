@@ -6,9 +6,9 @@ import '../bloc/task_detail_event.dart';
 import '../bloc/task_detail_state.dart';
 import '../data/models/comment.dart';
 import '../data/models/task_model.dart';
+import 'task_detail_edit_sheet.dart';
 import 'widgets/activity_timeline.dart';
 import '../../auth/bloc/auth_bloc.dart';
-import '../../auth/bloc/auth_state.dart';
 
 class TaskDetailScreen extends StatelessWidget {
   final int taskId;
@@ -29,8 +29,25 @@ class _TaskDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final role = context.watch<AuthBloc>().state.user?.role;
+    final canEditTask = role == 'admin' || role == 'manager';
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Task')),
+      appBar: AppBar(
+        title: const Text('Task'),
+        actions: [
+          if (canEditTask)
+            BlocBuilder<TaskDetailBloc, TaskDetailState>(
+              builder: (context, state) => IconButton(
+                tooltip: 'Edit task',
+                onPressed: state.task == null || state.status == TaskDetailStatus.updating
+                    ? null
+                    : () => showTaskDetailEditSheet(context, state.task!),
+                icon: const Icon(Icons.edit_outlined),
+              ),
+            ),
+        ],
+      ),
       body: BlocConsumer<TaskDetailBloc, TaskDetailState>(
         listener: (context, state) {
           if (state.error != null) {

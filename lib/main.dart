@@ -11,10 +11,9 @@ import 'features/auth/data/auth_repository.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/notifications/bloc/notification_bloc.dart';
 import 'features/notifications/bloc/notification_event.dart';
-import 'features/notifications/data/notification_repository.dart'; 
+import 'features/notifications/data/notification_repository.dart';
 import 'features/tasks/bloc/task_bloc.dart';
 import 'features/tasks/data/task_repository.dart';
-import 'features/tasks/ui/tasks_screen.dart';
 import 'app_shell.dart';
 import 'features/users/data/user_repository.dart';
 import 'features/projects/data/project_repository.dart';
@@ -30,9 +29,9 @@ class TaskApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final api = ApiClient(); 
+    final api = ApiClient();
     final storage = TokenStorage();
-    final authRepo = AuthRepository(api); 
+    final authRepo = AuthRepository(api);
     final taskRepo = TaskRepository(api);
     final notifRepo = NotificationRepository(api);
     final userRepo = UserRepository(api);
@@ -51,8 +50,9 @@ class TaskApp extends StatelessWidget {
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
-            create: (_) => AuthBloc(repo: authRepo, api: api, storage: storage)
-              ..add(AuthCheckRequested()),
+            create: (_) =>
+                AuthBloc(repo: authRepo, api: api, storage: storage)
+                  ..add(AuthCheckRequested()),
           ),
           BlocProvider(create: (_) => TaskBloc(taskRepo)),
           BlocProvider(create: (_) => NotificationBloc(notifRepo)),
@@ -76,7 +76,9 @@ class AuthGate extends StatelessWidget {
       listener: (context, state) {
         if (state.status == AuthStatus.authenticated) {
           context.read<TaskBloc>().add(const TasksLoadRequested());
-          context.read<NotificationBloc>().add( NotificationsUnreadCountRequested());
+          context.read<NotificationBloc>().add(
+            NotificationsUnreadCountRequested(),
+          );
         }
       },
       child: BlocBuilder<AuthBloc, AuthState>(
