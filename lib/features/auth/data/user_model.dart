@@ -6,6 +6,8 @@ class User {
   final int? companyId;
   final String? companyName;
   final String? industry;
+  final String? website;
+  final String? companySize;
   final bool isActive;
   final DateTime? createdAt;
 
@@ -17,6 +19,8 @@ class User {
     this.companyId,
     this.companyName,
     this.industry,
+    this.website,
+    this.companySize,
     this.isActive = true,
     this.createdAt,
   });
@@ -35,6 +39,12 @@ class User {
       industry: company is Map<String, dynamic>
           ? company['industry'] as String?
           : json['industry'] as String?,
+      website: company is Map<String, dynamic>
+          ? company['website'] as String?
+          : json['website'] as String?,
+      companySize: company is Map<String, dynamic>
+          ? company['companySize'] as String?
+          : json['companySize'] as String?,
       isActive: json['isActive'] ?? true,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
@@ -48,6 +58,8 @@ class User {
         'name': name,
         'role': role,
         'companyId': companyId,
+        'website': website,
+        'companySize': companySize,
         'isActive': isActive,
         'createdAt': createdAt?.toIso8601String(),
       };

@@ -25,6 +25,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthRegisterSubmitted>(_onRegisterSubmitted);
     on<AuthLogoutRequested>(_onLogout);
     on<AuthProfileUpdateRequested>(_onProfileUpdate);
+    on<AuthCompanyUpdateRequested>(_onCompanyUpdate);
   }
 
   Future<void> _onCheckRequested(
@@ -96,6 +97,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         companyName: event.companyName,
         industry: event.industry,
         website: event.website,
+        companySize: event.companySize,
       );
 
       final token = data['token'];
@@ -137,17 +139,96 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final currentUser = state.user;
     if (currentUser == null) return;
 
+    emit(
+      state.copyWith(
+        isLoading: true,
+        clearError: true,
+        clearSuccessMessage: true,
+      ),
+    );
     try {
-      final updated = await _repo.updateMe(
+      final response = await _repo.updateMe(
         name: event.name,
         currentPassword: event.currentPassword,
         newPassword: event.newPassword,
       );
-      emit(state.copyWith(user: updated, error: null));
+      final data = response['data'] is Map<String, dynamic>
+          ? response['data'] as Map<String, dynamic>
+          : response;
+      final userResponse = data['user'] is Map<String, dynamic>
+          ? data['user'] as Map<String, dynamic>
+          : data;
+      final updated = User.fromJson({
+        ...currentUser.toJson(),
+        'companyName': currentUser.companyName,
+        'industry': currentUser.industry,
+        ...userResponse,
+      });
+      emit(
+        state.copyWith(
+          user: updated,
+          isLoading: false,
+          clearError: true,
+          successMessage: 'Profile updated',
+        ),
+      );
     } on ApiException catch (e) {
-      emit(state.copyWith(error: e.message));
+      emit(state.copyWith(isLoading: false, error: e.message));
     } catch (_) {
-      emit(state.copyWith(error: 'Failed to update profile'));
+      emit(state.copyWith(isLoading: false, error: 'Failed to update profile'));
+    }
+  }
+
+  Future<void> _onCompanyUpdate(
+    AuthCompanyUpdateRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    final currentUser = state.user;
+    if (currentUser == null || currentUser.role != 'admin') return;
+
+    emit(
+      state.copyWith(
+        isLoading: true,
+        clearError: true,
+        clearSuccessMessage: true,
+      ),
+    );
+    try {
+      final response = await _repo.updateCompany(
+        name: event.name,
+        industry: event.industry,
+        website: event.website,
+        companySize: event.companySize,
+      );
+      final companyResponse = response['company'];
+      final company = <String, dynamic>{
+        'name': event.name,
+        'industry': event.industry,
+        'website': event.website,
+        'companySize': event.companySize,
+        if (companyResponse is Map<String, dynamic>) ...companyResponse,
+        if (companyResponse is! Map<String, dynamic>) ...response,
+      };
+      if (response['companyName'] is String) {
+        company['name'] = response['companyName'];
+      }
+
+      final updated = User.fromJson({
+        ...currentUser.toJson(),
+        'company': company,
+      });
+      emit(
+        state.copyWith(
+          user: updated,
+          isLoading: false,
+          clearError: true,
+          successMessage: 'Company updated',
+        ),
+      );
+    } on ApiException catch (e) {
+      emit(state.copyWith(isLoading: false, error: e.message));
+    } catch (_) {
+      emit(state.copyWith(isLoading: false, error: 'Failed to update company'));
     }
   }
 

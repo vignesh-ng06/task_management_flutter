@@ -67,16 +67,15 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
     }
 
     setState(() => _saving = true);
-
-    context.read<AuthBloc>().add(AuthProfileUpdateRequested(
-          name: name,
-          currentPassword:
-              _changePassword ? _currentPwCtrl.text : null,
-          newPassword:
-              _changePassword && _newPwCtrl.text.isNotEmpty
-                  ? _newPwCtrl.text
-                  : null,
-        ));
+    context.read<AuthBloc>().add(
+      AuthProfileUpdateRequested(
+        name: name,
+        currentPassword: _changePassword ? _currentPwCtrl.text : null,
+        newPassword: _changePassword && _newPwCtrl.text.isNotEmpty
+            ? _newPwCtrl.text
+            : null,
+      ),
+    );
   }
 
   void _toast(String msg) {
@@ -89,25 +88,26 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
     final user = context.watch<AuthBloc>().state.user;
 
     return BlocListener<AuthBloc, AuthState>(
-      listenWhen: (prev, curr) =>
-          prev.error != curr.error ||
-          (prev.user?.name != curr.user?.name) && curr.user != null,
+      listenWhen: (previous, current) =>
+          previous.isLoading != current.isLoading ||
+          previous.error != current.error ||
+          previous.successMessage != current.successMessage,
       listener: (context, state) {
-        if (_saving) {
-          // If we got an error, stop the spinner and show it
-          if (state.error != null) {
-            setState(() => _saving = false);
-            _toast(state.error!);
-          } else {
-            // Success — close the sheet
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Profile updated'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
+        if (!_saving || state.isLoading) return;
+
+        if (state.error != null) {
+          setState(() => _saving = false);
+          _toast(state.error!);
+        } else if (state.successMessage == 'Profile updated') {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile updated'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          setState(() => _saving = false);
         }
       },
       child: Container(

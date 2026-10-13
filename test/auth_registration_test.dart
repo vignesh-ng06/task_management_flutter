@@ -17,6 +17,7 @@ class _SuccessfulRegistrationRepository extends AuthRepository {
     required String companyName,
     String? industry,
     String? website,
+    String? companySize,
   }) async {
     return {
       'user': {

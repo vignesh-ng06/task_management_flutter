@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:task_app/features/profile/ui/company_edit_sheet.dart';
 import 'package:task_app/features/profile/ui/profile_edit_sheet.dart';
 
 import '../../auth/bloc/auth_bloc.dart';
@@ -34,34 +35,54 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: Column(
+                  child: Stack(
                     children: [
-                      CircleAvatar(
-                        radius: 38,
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: theme.colorScheme.onPrimary,
-                        child: Text(
-                          user.initials,
-                          style: const TextStyle(
-                            fontSize: 25,
-                            fontWeight: FontWeight.bold,
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: IconButton(
+                          tooltip: 'Edit profile',
+                          onPressed: () => showProfileEditSheet(context),
+                          icon: const Icon(Icons.edit_outlined),
+                          style: IconButton.styleFrom(
+                            backgroundColor: theme.colorScheme.surface,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      Text(
-                        user.displayName,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        user.email,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                      SizedBox(
+                        width: double.infinity,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            CircleAvatar(
+                              radius: 38,
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: theme.colorScheme.onPrimary,
+                              child: Text(
+                                user.initials,
+                                style: const TextStyle(
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              user.displayName,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              user.email,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -81,11 +102,28 @@ class ProfileScreen extends StatelessWidget {
                   value: user.role,
                 ),
                 const SizedBox(height: 24),
-                Text(
-                  'Company',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.business_outlined,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Company',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (user.role == 'admin')
+                      IconButton(
+                        tooltip: 'Edit company',
+                        onPressed: () => showCompanyEditSheet(context),
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 _InfoTile(
@@ -99,19 +137,19 @@ class ProfileScreen extends StatelessWidget {
                     label: 'Industry',
                     value: user.industry!,
                   ),
-                const SizedBox(height: 20),
-                OutlinedButton.icon(
-                  onPressed: () => showProfileEditSheet(context),
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Edit profile'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                if (user.website?.isNotEmpty == true)
+                  _InfoTile(
+                    icon: Icons.link_outlined,
+                    label: 'Website',
+                    value: user.website!,
                   ),
-                ),
-                const SizedBox(height: 12),
+                if (user.companySize?.isNotEmpty == true)
+                  _InfoTile(
+                    icon: Icons.group_outlined,
+                    label: 'Company size',
+                    value: user.companySize!,
+                  ),
+                const SizedBox(height: 20),
                 FilledButton.icon(
                   onPressed: () {
                     context.read<AuthBloc>().add(AuthLogoutRequested());

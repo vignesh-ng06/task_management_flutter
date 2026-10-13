@@ -3,24 +3,21 @@ import 'package:task_app/core/api/api_client.dart';
 import 'user_model.dart';
 
 class AuthRepository {
-   final ApiClient api;
-   AuthRepository(this.api);
+  final ApiClient api;
+  AuthRepository(this.api);
 
-   Future<Map<String, dynamic>>  login(String email, String password) async {
-     return api.post('/auth/login',{
-       'email': email,
-       'password': password
-     });
-     
-   }
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    return api.post('/auth/login', {'email': email, 'password': password});
+  }
 
-Future<Map<String, dynamic>> register({
+  Future<Map<String, dynamic>> register({
     required String email,
     required String password,
     required String name,
     required String companyName,
     String? industry,
     String? website,
+    String? companySize,
   }) async {
     return api.post('/auth/register', {
       'email': email,
@@ -29,6 +26,8 @@ Future<Map<String, dynamic>> register({
       'companyName': companyName,
       if (industry != null && industry.isNotEmpty) 'industry': industry,
       if (website != null && website.isNotEmpty) 'website': website,
+      if (companySize != null && companySize.isNotEmpty)
+        'companySize': companySize,
     });
   }
 
@@ -37,20 +36,32 @@ Future<Map<String, dynamic>> register({
     return User.fromJson(json);
   }
 
-  Future<User> updateMe({
-  String? name,
-  String? currentPassword,
-  String? newPassword,
-}) async {
-  final body = <String, dynamic>{};
-  if (name != null) body['name'] = name;
-  if (newPassword != null && newPassword.isNotEmpty) {
-    body['newPassword'] = newPassword;
-    body['currentPassword'] = currentPassword;
+  Future<Map<String, dynamic>> updateMe({
+    String? name,
+    String? currentPassword,
+    String? newPassword,
+  }) async {
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (newPassword != null && newPassword.isNotEmpty) {
+      body['newPassword'] = newPassword;
+      body['currentPassword'] = currentPassword;
+    }
+
+    return api.patch('/auth/update/me', body);
   }
 
-  final data = await api.patch('/auth/update/me', body);
-  return User.fromJson(data);
-}
-
+  Future<Map<String, dynamic>> updateCompany({
+    required String name,
+    required String industry,
+    required String website,
+    required String companySize,
+  }) {
+    return api.patch('/auth/update/company', {
+      'name': name,
+      'industry': industry,
+      'website': website,
+      'companySize': companySize,
+    });
+  }
 }

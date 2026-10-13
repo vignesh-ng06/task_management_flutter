@@ -73,6 +73,9 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
+      listenWhen: (previous, current) =>
+          previous.status != AuthStatus.authenticated &&
+          current.status == AuthStatus.authenticated,
       listener: (context, state) {
         if (state.status == AuthStatus.authenticated) {
           context.read<TaskBloc>().add(const TasksLoadRequested());

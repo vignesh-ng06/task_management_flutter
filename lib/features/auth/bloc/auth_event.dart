@@ -26,6 +26,7 @@ class AuthRegisterSubmitted extends AuthEvent {
   final String companyName;
   final String? industry;
   final String? website;
+  final String? companySize;
 
   const AuthRegisterSubmitted({
     required this.email,
@@ -33,11 +34,20 @@ class AuthRegisterSubmitted extends AuthEvent {
     required this.name,
     required this.companyName,
     this.industry,
-    this.website
+    this.website,
+    this.companySize,
   });
 
   @override
-  List<Object?> get props => [email, password, name, companyName, industry, website];
+  List<Object?> get props => [
+    email,
+    password,
+    name,
+    companyName,
+    industry,
+    website,
+    companySize,
+  ];
 }
 
 class AuthLogoutRequested extends AuthEvent {}
@@ -55,4 +65,21 @@ class AuthProfileUpdateRequested extends AuthEvent {
 
   @override
   List<Object?> get props => [name, currentPassword, newPassword];
+}
+
+class AuthCompanyUpdateRequested extends AuthEvent {
+  final String name;
+  final String industry;
+  final String website;
+  final String companySize;
+
+  const AuthCompanyUpdateRequested({
+    required this.name,
+    required this.industry,
+    required this.website,
+    required this.companySize,
+  });
+
+  @override
+  List<Object?> get props => [name, industry, website, companySize];
 }
