@@ -5,6 +5,8 @@ import '../bloc/notification_bloc.dart';
 import '../bloc/notification_event.dart';
 import '../bloc/notification_state.dart';
 import '../data/models/notification.dart';
+import '../../projects/ui/project_detail_screen.dart';
+import '../../tasks/ui/task_detail_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -396,6 +398,47 @@ class _NotificationTile extends StatelessWidget {
 
   const _NotificationTile({super.key, required this.notification});
 
+  void _openDestination(BuildContext context) {
+    if (!notification.isRead) {
+      context.read<NotificationBloc>().add(
+        NotificationMarkReadRequested(notification.id),
+      );
+    }
+
+    final linkType = notification.linkType?.toLowerCase();
+    final linkId = notification.linkId;
+    if (linkId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This notification has no linked page.')),
+      );
+      return;
+    }
+
+    switch (linkType) {
+      case 'task':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => TaskDetailScreen(taskId: linkId),
+          ),
+        );
+        break;
+      case 'project':
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ProjectDetailScreen(projectId: linkId),
+          ),
+        );
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This notification type has no linked page.'),
+          ),
+        );
+        break;
+    }
+  }
+
   Future<void> _confirmDelete(BuildContext context) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
@@ -464,11 +507,7 @@ class _NotificationTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: isUnread
-            ? () => context.read<NotificationBloc>().add(
-                NotificationMarkReadRequested(notification.id),
-              )
-            : null,
+        onTap: () => _openDestination(context),
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -585,7 +624,13 @@ class _NotificationTile extends StatelessWidget {
                         const Spacer(),
                         if (isUnread)
                           Text(
-                            'Tap to mark read',
+                            notification.linkId != null &&
+                                    (notification.linkType?.toLowerCase() ==
+                                            'task' ||
+                                        notification.linkType?.toLowerCase() ==
+                                            'project')
+                                ? 'Tap to open'
+                                : 'Tap to mark read',
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: colors.primary,
                               fontWeight: FontWeight.w600,
