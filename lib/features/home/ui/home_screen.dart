@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../auth/bloc/auth_bloc.dart';
-import '../../auth/bloc/auth_state.dart';
+import '../../../core/widgets/app_header.dart';
 import '../../tasks/ui/task_detail_screen.dart';
 import '../bloc/home_bloc.dart';
 import '../bloc/home_event.dart';
@@ -27,8 +27,8 @@ class _HomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
+      appBar: AppHeader(
+        section: 'Home',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -142,7 +142,7 @@ class _GreetingCard extends StatelessWidget {
           Text(
             _greeting(),
             style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
+              color: Colors.white.withValues(alpha: 0.85),
               fontSize: 14,
             ),
           ),
@@ -182,9 +182,9 @@ class _Pill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: outline ? Colors.transparent : Colors.white.withOpacity(0.2),
+        color: outline ? Colors.transparent : Colors.white.withValues(alpha: 0.2),
         border: outline
-            ? Border.all(color: Colors.white.withOpacity(0.5))
+            ? Border.all(color: Colors.white.withValues(alpha: 0.5))
             : null,
         borderRadius: BorderRadius.circular(20),
       ),
@@ -293,7 +293,7 @@ class _StatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, size: 18, color: color),

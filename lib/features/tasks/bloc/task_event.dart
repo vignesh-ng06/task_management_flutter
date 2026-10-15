@@ -57,6 +57,7 @@ class TaskUpdateRequested extends TaskEvent {
   final int id;
   final String? title;
   final String? description;
+  final bool clearDescription;
   final String? priority;
   final DateTime? dueDate;
   final bool clearDueDate;
@@ -67,6 +68,7 @@ class TaskUpdateRequested extends TaskEvent {
     required this.id,
     this.title,
     this.description,
+    this.clearDescription = false,
     this.priority,
     this.dueDate,
     this.clearDueDate = false,
@@ -76,7 +78,7 @@ class TaskUpdateRequested extends TaskEvent {
 
   @override
   List<Object?> get props => [
-        id, title, description, priority, dueDate,
+    id, title, description, clearDescription, priority, dueDate,
         clearDueDate, assignedTo, clearAssignee,
       ];
 

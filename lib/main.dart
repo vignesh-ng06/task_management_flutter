@@ -58,7 +58,7 @@ class TaskApp extends StatelessWidget {
           BlocProvider(create: (_) => NotificationBloc(notifRepo)),
         ],
         child: MaterialApp(
-          title: 'Task App',
+          title: 'TaskFlow',
           theme: AppTheme.light(),
           home: const AuthGate(),
         ),

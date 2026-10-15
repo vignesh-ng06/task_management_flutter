@@ -1,54 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/api/api_client.dart';
 import '../../auth/data/user_model.dart';
 import '../../projects/data/models/project.dart';
 import '../../projects/data/project_repository.dart';
 import '../../users/data/user_repository.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
+import '../bloc/task_state.dart';
 import '../data/models/task_model.dart';
-import '../data/task_repository.dart';
 
-Future<void> showTaskFormSheet(BuildContext context, {Task? existing}) async {
+Future<bool> showTaskFormSheet(
+  BuildContext context, {
+  Task? existing,
+  int? projectId,
+}) async {
   // Preload projects and users in parallel
   final projectRepo = context.read<ProjectRepository>();
   final userRepo = context.read<UserRepository>();
+  final messenger = ScaffoldMessenger.of(context);
+  late final List<Project> projects;
+  late final List<User> users;
+  try {
+    final results = await Future.wait([
+      projectRepo.listProjects(),
+      userRepo.listUsers(includeInactive: false),
+    ]);
+    projects = results[0] as List<Project>;
+    users = results[1] as List<User>;
+  } on ApiException catch (e) {
+    if (context.mounted) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    }
+    return false;
+  } catch (error) {
+    if (context.mounted) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Unable to load the task form: $error')),
+      );
+    }
+    return false;
+  }
 
-  final results = await Future.wait([
-    projectRepo.listProjects(),
-    userRepo.listUsers(includeInactive: false),
-  ]);
+  if (!context.mounted) return false;
 
-  final projects = results[0] as List<Project>;
-  final users = results[1] as List<User>;
-
-  if (!context.mounted) return;
-
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => MultiBlocProvider(
-      providers: [
-        BlocProvider.value(value: context.read<TaskBloc>()),
-      ],
-      child: _TaskFormSheet(
-        existing: existing,
-        projects: projects,
-        users: users,
-      ),
-    ),
-  );
+  return await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        useRootNavigator: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => MultiBlocProvider(
+          providers: [BlocProvider.value(value: context.read<TaskBloc>())],
+          child: _TaskFormSheet(
+            existing: existing,
+            initialProjectId: projectId,
+            projects: projects,
+            users: users,
+          ),
+        ),
+      ) ??
+      false;
 }
 
 class _TaskFormSheet extends StatefulWidget {
   final Task? existing;
+  final int? initialProjectId;
   final List<Project> projects;
   final List<User> users;
 
   const _TaskFormSheet({
     this.existing,
+    this.initialProjectId,
     required this.projects,
     required this.users,
   });
@@ -65,6 +88,8 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
   int? _assigneeId;
   String _priority = 'MEDIUM';
   DateTime? _dueDate;
+  bool _isSaving = false;
+  String? _saveError;
 
   bool get isEdit => widget.existing != null;
 
@@ -78,6 +103,11 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       _assigneeId = widget.existing!.assignedTo;
       _priority = widget.existing!.priority;
       _dueDate = widget.existing!.dueDate;
+    } else if (widget.initialProjectId != null &&
+        widget.projects.any(
+          (project) => project.id == widget.initialProjectId,
+        )) {
+      _projectId = widget.initialProjectId;
     } else if (widget.projects.isNotEmpty) {
       _projectId = widget.projects.first.id;
     }
@@ -101,6 +131,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
   }
 
   void _submit() {
+    if (_isSaving) return;
     final title = _titleCtrl.text.trim();
     final desc = _descCtrl.text.trim();
 
@@ -113,12 +144,18 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       return;
     }
 
-if (isEdit) {
+    setState(() {
+      _isSaving = true;
+      _saveError = null;
+    });
+
+    if (isEdit) {
       context.read<TaskBloc>().add(
         TaskUpdateRequested(
           id: widget.existing!.id,
           title: title,
           description: desc.isEmpty ? null : desc,
+          clearDescription: desc.isEmpty,
           priority: _priority,
           dueDate: _dueDate,
           clearDueDate: _dueDate == null,
@@ -138,8 +175,6 @@ if (isEdit) {
         ),
       );
     }
-
-    Navigator.pop(context);
   }
 
   void _toast(String msg) {
@@ -150,145 +185,207 @@ if (isEdit) {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return Container(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: 20 + bottomInset,
-      ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isEdit ? 'Edit task' : 'New task',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-
-            // Title
-            TextField(
-              controller: _titleCtrl,
-              autofocus: !isEdit,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Description
-            TextField(
-              controller: _descCtrl,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Project dropdown
-            DropdownButtonFormField<int>(
-              value: _projectId,
-              decoration: const InputDecoration(
-                labelText: 'Project',
-                border: OutlineInputBorder(),
-              ),
-              items: widget.projects
-                  .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name)))
-                  .toList(),
-              onChanged: (v) => setState(() => _projectId = v),
-            ),
-            const SizedBox(height: 12),
-
-            // Assignee dropdown
-            DropdownButtonFormField<int?>(
-              value: _assigneeId,
-              decoration: const InputDecoration(
-                labelText: 'Assign to (optional)',
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('Unassigned')),
-                ...widget.users.map(
-                  (u) => DropdownMenuItem(
-                    value: u.id,
-                    child: Text('${u.displayName} (${u.role})'),
-                  ),
-                ),
-              ],
-              onChanged: (v) => setState(() => _assigneeId = v),
-            ),
-            const SizedBox(height: 12),
-
-            // Priority selector
-            const Text('Priority',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'HIGH', label: Text('High')),
-                ButtonSegment(value: 'MEDIUM', label: Text('Medium')),
-                ButtonSegment(value: 'LOW', label: Text('Low')),
-              ],
-              selected: {_priority},
-              onSelectionChanged: (s) => setState(() => _priority = s.first),
-            ),
-            const SizedBox(height: 16),
-
-            // Due date
-            InkWell(
-              onTap: _pickDueDate,
-              borderRadius: BorderRadius.circular(4),
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: 'Due date',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: _dueDate != null
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () => setState(() => _dueDate = null),
-                        )
-                      : const Icon(Icons.calendar_today),
-                ),
-                child: Text(
-                  _dueDate == null
-                      ? 'No due date'
-                      : _dueDate!.toLocal().toString().split(' ')[0],
-                  style: TextStyle(
-                    color: _dueDate == null ? Colors.grey : null,
+    return BlocListener<TaskBloc, TaskState>(
+      listenWhen: (previous, current) =>
+          (current.mutationStatus == TaskMutationStatus.succeeded ||
+              current.mutationStatus == TaskMutationStatus.failed) &&
+          previous.mutationStatus != current.mutationStatus,
+      listener: (context, state) {
+        if (state.mutationStatus == TaskMutationStatus.succeeded) {
+          Navigator.of(context).pop(true);
+        } else {
+          setState(() {
+            _isSaving = false;
+            _saveError = state.mutationMessage ?? 'Unable to save this task.';
+          });
+        }
+      },
+      child: Container(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: 20 + bottomInset,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            FilledButton(
-              onPressed: _submit,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
+              const SizedBox(height: 16),
+              Text(
+                isEdit ? 'Edit task' : 'New task',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              child: Text(isEdit ? 'Save changes' : 'Create task'),
-            ),
-          ],
+              const SizedBox(height: 20),
+              if (_saveError != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _saveError!,
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onErrorContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Title
+              TextField(
+                controller: _titleCtrl,
+                autofocus: !isEdit,
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Description
+              TextField(
+                controller: _descCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Project dropdown
+              DropdownButtonFormField<int>(
+                initialValue: _projectId,
+                decoration: const InputDecoration(
+                  labelText: 'Project',
+                  border: OutlineInputBorder(),
+                ),
+                items: widget.projects
+                    .map(
+                      (p) => DropdownMenuItem(value: p.id, child: Text(p.name)),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _projectId = v),
+              ),
+              const SizedBox(height: 12),
+
+              // Assignee dropdown
+              DropdownButtonFormField<int?>(
+                initialValue: _assigneeId,
+                decoration: const InputDecoration(
+                  labelText: 'Assign to (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem(
+                    value: null,
+                    child: Text('Unassigned'),
+                  ),
+                  ...widget.users.map(
+                    (u) => DropdownMenuItem(
+                      value: u.id,
+                      child: Text('${u.displayName} (${u.role})'),
+                    ),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _assigneeId = v),
+              ),
+              const SizedBox(height: 12),
+
+              // Priority selector
+              const Text(
+                'Priority',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'HIGH', label: Text('High')),
+                  ButtonSegment(value: 'MEDIUM', label: Text('Medium')),
+                  ButtonSegment(value: 'LOW', label: Text('Low')),
+                ],
+                selected: {_priority},
+                onSelectionChanged: (s) => setState(() => _priority = s.first),
+              ),
+              const SizedBox(height: 16),
+
+              // Due date
+              InkWell(
+                onTap: _pickDueDate,
+                borderRadius: BorderRadius.circular(4),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Due date',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: _dueDate != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => setState(() => _dueDate = null),
+                          )
+                        : const Icon(Icons.calendar_today),
+                  ),
+                  child: Text(
+                    _dueDate == null
+                        ? 'No due date'
+                        : _dueDate!.toLocal().toString().split(' ')[0],
+                    style: TextStyle(
+                      color: _dueDate == null ? Colors.grey : null,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              FilledButton(
+                onPressed: _isSaving ? null : _submit,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(isEdit ? 'Save changes' : 'Create task'),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/widgets/app_header.dart';
 import '../bloc/user_bloc.dart';
 import '../bloc/user_event.dart';
 import '../bloc/user_state.dart';
@@ -41,8 +42,8 @@ class _UsersViewState extends State<_UsersView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Users'),
+      appBar: AppHeader(
+        section: 'Users',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -240,7 +241,7 @@ class _UsersViewState extends State<_UsersView> {
                         child: ListView.separated(
                           padding: const EdgeInsets.only(bottom: 80),
                           itemCount: displayList.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const Divider(height: 1, indent: 72),
                           itemBuilder: (_, i) {
                             final user = displayList[i];
@@ -316,7 +317,7 @@ class _UserTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CircleAvatar(
         backgroundColor:
-            inactive ? Colors.grey.shade300 : _roleColor.withOpacity(0.15),
+            inactive ? Colors.grey.shade300 : _roleColor.withValues(alpha: 0.15),
         child: Text(
           user.initials,
           style: TextStyle(
@@ -348,7 +349,7 @@ class _UserTile extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: _roleColor.withOpacity(0.12),
+                  color: _roleColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(

@@ -169,40 +169,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildWelcomeHeader() {
     return Column(
       children: [
-        Container(
-          width: 60,
-          height: 60,
-          margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [_primary, _secondary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: _primary.withValues(alpha: 0.28),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.view_kanban_outlined,
-            size: 30,
-            color: Colors.white,
-          ),
-        ),
-        const Text(
-          'TaskFlow',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _onSurface,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
-          ),
+        Image.asset(
+          'assets/branding/taskflow_logo.png',
+          width: 150,
+          height: 100,
+          fit: BoxFit.contain,
+          semanticLabel: 'TaskFlow',
         ),
         const SizedBox(height: 12),
         Text(

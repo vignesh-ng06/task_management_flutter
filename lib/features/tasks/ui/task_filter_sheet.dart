@@ -23,7 +23,7 @@ Future<void> showTaskFilterSheet(
   ]);
 
   final projects = results[0] as List<Project>;
-  final users = results[1] as List;
+  final users = results[1];
 
   if (!context.mounted) return;
 
@@ -199,7 +199,7 @@ class _FilterSheetState extends State<_FilterSheet> {
 
             // ── Project ──
             DropdownButtonFormField<int?>(
-              value: _filters.projectId,
+              initialValue: _filters.projectId,
               decoration: const InputDecoration(
                 labelText: 'Project',
                 border: OutlineInputBorder(),
@@ -226,7 +226,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             // ── Assignee (admin/manager only) ──
             if (widget.showAssignee)
               DropdownButtonFormField<int?>(
-                value: _filters.assignedTo,
+                initialValue: _filters.assignedTo,
                 decoration: const InputDecoration(
                   labelText: 'Assignee',
                   border: OutlineInputBorder(),

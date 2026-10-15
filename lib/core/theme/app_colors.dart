@@ -2,26 +2,36 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Brand
-  static const primary = Color(0xFF4F46E5);      // Indigo 600
-  static const primaryDark = Color(0xFF3730A3);
-  static const primaryLight = Color(0xFFE0E7FF);
+  static const primary = Color(0xFF174EA6);
+  static const primaryDark = Color(0xFF123B7A);
+  static const primaryLight = Color(0xFFDCE9FF);
 
   // Priority
-  static const high = Color(0xFFDC2626);         // Red
-  static const medium = Color(0xFFF59E0B);       // Amber
-  static const low = Color(0xFF10B981);          // Green
+  static const high = Color(0xFFDC4C4C);
+  static const medium = Color(0xFFE6A23C);
+  static const low = Color(0xFF159B72);
 
-  // Status
-  static const todo = Color(0xFF64748B);         // Slate
-  static const inProgress = Color(0xFF3B82F6);   // Blue
-  static const review = Color(0xFF8B5CF6);       // Violet
-  static const completed = Color(0xFF10B981);    // Green
+  // Task status
+  static const todo = Color(0xFF64748B);
+  static const inProgress = Color(0xFF2878D0);
+  static const review = Color(0xFF8064C8);
+  static const completed = Color(0xFF159B72);
 
-  // Neutral
-  static const surface = Color(0xFFFFFFFF);
-  static const background = Color(0xFFF8FAFC);
-  static const cardBorder = Color(0xFFE2E8F0);
-  static const textPrimary = Color(0xFF0F172A);
-  static const textSecondary = Color(0xFF64748B);
-  static const textMuted = Color(0xFF94A3B8);
+  // Backgrounds
+  static const background = Color(0xFFE9EEF5);
+  static const surface = Color(0xFFF7F9FC);
+  static const surfaceAlt = Color(0xFFF0F4F9);
+  static const cardBorder = Color(0xFFD8E1EC);
+
+  // Text
+  static const textPrimary = Color(0xFF192A41);
+  static const textSecondary = Color(0xFF607086);
+  static const textMuted = Color(0xFF8795A8);
+
+  // Feedback
+  static const successBackground = Color(0xFFD9F2E6);
+  static const warningBackground = Color(0xFFFFF0D5);
+  static const errorBackground = Color(0xFFFCE5E5);
+  static const infoBackground = Color(0xFFDCE9FF);
 }
+

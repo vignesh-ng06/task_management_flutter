@@ -364,11 +364,16 @@ class _TopBar extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(11),
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, Color(0xFF712AE2)],
+              color: AppColors.primaryLight,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: Image.asset(
+                'assets/branding/taskflow_icon.png',
+                fit: BoxFit.contain,
               ),
             ),
-            child: const Icon(Icons.view_quilt_outlined, color: Colors.white),
           ),
           const SizedBox(width: 8),
           const Text(

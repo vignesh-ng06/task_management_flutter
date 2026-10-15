@@ -1,4 +1,7 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../../core/api/api_client.dart';
 import '../data/task_repository.dart';
 import 'task_event.dart';
@@ -22,7 +25,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   void setCurrentUserId(int id) => _currentUserId = id;
 
-Future<void> _fetchAndEmit(Emitter<TaskState> emit) async {
+  Future<void> _fetchAndEmit(Emitter<TaskState> emit) async {
     emit(state.copyWith(status: TaskListStatus.loading, clearError: true));
     try {
       final tasks = state.mode == TaskMode.mine
@@ -52,7 +55,7 @@ Future<void> _fetchAndEmit(Emitter<TaskState> emit) async {
     await _fetchAndEmit(emit);
   }
 
-Future<void> _onFiltersChange(
+  Future<void> _onFiltersChange(
     TaskFiltersChanged event,
     Emitter<TaskState> emit,
   ) async {
@@ -95,6 +98,13 @@ Future<void> _onFiltersChange(
     TaskCreateRequested event,
     Emitter<TaskState> emit,
   ) async {
+    emit(
+      state.copyWith(
+        mutationStatus: TaskMutationStatus.creating,
+        clearError: true,
+        clearMutationMessage: true,
+      ),
+    );
     try {
       final task = await _repo.createTask(
         title: event.title,
@@ -105,16 +115,48 @@ Future<void> _onFiltersChange(
         dueDate: event.dueDate,
       );
 
-      // In "mine" mode, only prepend if assigned to me
-      // In "all" mode, always prepend
-      final shouldPrepend = state.mode == TaskMode.all ||
-          (_currentUserId != null && task.assignedTo == _currentUserId);
-
-      if (shouldPrepend) {
-        emit(state.copyWith(tasks: [task, ...state.tasks]));
+      if (task != null &&
+          (state.mode == TaskMode.all ||
+              (_currentUserId != null &&
+                  task.assignedTo == _currentUserId))) {
+        emit(
+          state.copyWith(
+            tasks: [task, ...state.tasks],
+            mutationStatus: TaskMutationStatus.succeeded,
+            mutationMessage: 'Task created successfully',
+          ),
+        );
+      } else {
+        emit(
+          state.copyWith(
+            mutationStatus: TaskMutationStatus.succeeded,
+            mutationMessage: 'Task created successfully',
+          ),
+        );
       }
     } on ApiException catch (e) {
-      emit(state.copyWith(error: e.message));
+      emit(
+        state.copyWith(
+          mutationStatus: TaskMutationStatus.failed,
+          mutationMessage: e.message,
+          error: e.message,
+        ),
+      );
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed to create task',
+        name: 'TaskBloc',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      final message = 'Failed to create task: $error';
+      emit(
+        state.copyWith(
+          mutationStatus: TaskMutationStatus.failed,
+          mutationMessage: message,
+          error: message,
+        ),
+      );
     }
   }
 
@@ -122,13 +164,31 @@ Future<void> _onFiltersChange(
     TaskUpdateRequested event,
     Emitter<TaskState> emit,
   ) async {
+    emit(
+      state.copyWith(
+        mutationStatus: TaskMutationStatus.updating,
+        clearError: true,
+        clearMutationMessage: true,
+      ),
+    );
     final index = state.tasks.indexWhere((t) => t.id == event.id);
-    if (index == -1) return;
+    if (index == -1) {
+      const message = 'Task no longer exists. Refresh the list and try again.';
+      emit(
+        state.copyWith(
+          mutationStatus: TaskMutationStatus.failed,
+          mutationMessage: message,
+          error: message,
+        ),
+      );
+      return;
+    }
     final original = state.tasks[index];
 
     final optimistic = original.copyWith(
       title: event.title,
       description: event.description,
+      clearDescription: event.clearDescription,
       priority: event.priority,
       dueDate: event.dueDate,
       clearDueDate: event.clearDueDate,
@@ -143,6 +203,7 @@ Future<void> _onFiltersChange(
         event.id,
         title: event.title,
         description: event.description,
+        clearDescription: event.clearDescription,
         priority: event.priority,
         dueDate: event.dueDate,
         clearDueDate: event.clearDueDate,
@@ -151,10 +212,40 @@ Future<void> _onFiltersChange(
       );
       final merged = serverTask.copyWithComments(original.comments);
       final confirmed = [...state.tasks]..[index] = merged;
-      emit(state.copyWith(tasks: confirmed));
+      emit(
+        state.copyWith(
+          tasks: confirmed,
+          mutationStatus: TaskMutationStatus.succeeded,
+          mutationMessage: 'Task updated successfully',
+        ),
+      );
     } on ApiException catch (e) {
       final rolledBack = [...state.tasks]..[index] = original;
-      emit(state.copyWith(tasks: rolledBack, error: e.message));
+      emit(
+        state.copyWith(
+          tasks: rolledBack,
+          mutationStatus: TaskMutationStatus.failed,
+          mutationMessage: e.message,
+          error: e.message,
+        ),
+      );
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed to update task ${event.id}',
+        name: 'TaskBloc',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      final rolledBack = [...state.tasks]..[index] = original;
+      final message = 'Failed to update task: $error';
+      emit(
+        state.copyWith(
+          tasks: rolledBack,
+          mutationStatus: TaskMutationStatus.failed,
+          mutationMessage: message,
+          error: message,
+        ),
+      );
     }
   }
 

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../auth/bloc/auth_bloc.dart';
-import '../../auth/bloc/auth_state.dart';
+import '../../../core/widgets/app_header.dart';
+import '../../../core/widgets/app_feedback.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
+import '../data/models/task_model.dart';
 import 'task_detail_screen.dart';
 import 'task_filter_sheet.dart';
 import 'task_form_sheet.dart';
@@ -44,8 +46,8 @@ Widget build(BuildContext context) {
       }
     },
     child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Tasks'),
+      appBar: AppHeader(
+        section: 'Tasks',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -57,12 +59,16 @@ Widget build(BuildContext context) {
       floatingActionButton: _canManage(context)
           ? FloatingActionButton.extended(
               heroTag: 'tasks-new-task',
-              onPressed: () => showTaskFormSheet(context),
+              onPressed: () => _openTaskForm(context),
               icon: const Icon(Icons.add),
               label: const Text('New task'),
             )
           : null,
       body: BlocConsumer<TaskBloc, TaskState>(
+        listenWhen: (previous, state) =>
+            (previous.error != state.error &&
+                state.error != null &&
+                state.mutationStatus != TaskMutationStatus.failed),
         listener: (context, state) {
           if (state.error != null) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -183,6 +189,17 @@ Widget build(BuildContext context) {
   );
 }
 
+Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
+  final saved = await showTaskFormSheet(context, existing: existing);
+  if (!context.mounted || !saved) return;
+
+  context.read<TaskBloc>().add(const TasksRefreshRequested());
+  showSuccessSnackBar(
+    context,
+    existing == null ? 'Task created successfully' : 'Task updated successfully',
+  );
+}
+
   int _activeCount(TaskFilters f) {
     int c = 0;
     if (f.status != null) c++;
@@ -252,22 +269,20 @@ Widget build(BuildContext context) {
         itemCount: state.tasks.length,
         itemBuilder: (context, i) {
           final task = state.tasks[i];
+          final taskBloc = context.read<TaskBloc>();
           return TaskCard(
             key: ValueKey(
                 'task-${task.id}-${task.status}-${task.priority}-${task.title}'),
             task: task,
             showAssignee: state.mode == TaskMode.all,
-            onTap: () {
-              Navigator.push(
+            onTap: () async {
+              await Navigator.push<void>(
                 context,
-                MaterialPageRoute(
+                MaterialPageRoute<void>(
                   builder: (_) => TaskDetailScreen(taskId: task.id),
                 ),
-              ).then((_) {
-                context
-                    .read<TaskBloc>()
-                    .add(const TasksRefreshRequested());
-              });
+              );
+              taskBloc.add(const TasksRefreshRequested());
             },
             onLongPress: canManage
                 ? () => _showTaskActions(context, task)
@@ -299,9 +314,9 @@ Widget build(BuildContext context) {
             ListTile(
               leading: const Icon(Icons.edit_outlined),
               title: const Text('Edit task'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(sheetCtx);
-                showTaskFormSheet(context, existing: task);
+                await _openTaskForm(context, existing: task);
               },
             ),
             ListTile(

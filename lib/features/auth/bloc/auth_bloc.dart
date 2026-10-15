@@ -13,13 +13,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final TokenStorage _storage;
 
   AuthBloc({
-    required AuthRepository repo,
-    required ApiClient api,
-    required TokenStorage storage,
-  }) : _repo = repo,
-       _api = api,
-       _storage = storage,
-       super(const AuthState.unknown()) {
+    required this._repo,
+    required this._api,
+    required this._storage,
+  }) : super(const AuthState.unknown()) {
     on<AuthCheckRequested>(_onCheckRequested);
     on<AuthLoginSubmitted>(_onLoginSubmitted);
     on<AuthRegisterSubmitted>(_onRegisterSubmitted);

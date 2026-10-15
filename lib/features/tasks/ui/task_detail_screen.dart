@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/widgets/app_feedback.dart';
+
+import '../../../core/widgets/app_header.dart';
 import '../bloc/task_detail_bloc.dart';
 import '../bloc/task_detail_event.dart';
 import '../bloc/task_detail_state.dart';
@@ -33,14 +36,16 @@ class _TaskDetailView extends StatelessWidget {
     final canEditTask = role == 'admin' || role == 'manager';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Task'),
+      appBar: AppHeader(
+        section: 'Task details',
         actions: [
           if (canEditTask)
             BlocBuilder<TaskDetailBloc, TaskDetailState>(
               builder: (context, state) => IconButton(
                 tooltip: 'Edit task',
-                onPressed: state.task == null || state.status == TaskDetailStatus.updating
+                onPressed:
+                    state.task == null ||
+                        state.status == TaskDetailStatus.updating
                     ? null
                     : () => showTaskDetailEditSheet(context, state.task!),
                 icon: const Icon(Icons.edit_outlined),
@@ -49,11 +54,19 @@ class _TaskDetailView extends StatelessWidget {
         ],
       ),
       body: BlocConsumer<TaskDetailBloc, TaskDetailState>(
+        listenWhen: (previous, state) =>
+            (previous.status == TaskDetailStatus.updating &&
+                state.status == TaskDetailStatus.loaded &&
+                state.error == null) ||
+            (previous.error != state.error &&
+                state.error != null &&
+                previous.status != TaskDetailStatus.updating),
         listener: (context, state) {
-          if (state.error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error!)),
-            );
+          if (state.status == TaskDetailStatus.loaded && state.error == null) {
+            showSuccessSnackBar(context, 'Task updated successfully');
+          } else if (state.error != null) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(state.error!)));
           }
         },
         builder: (context, state) {
@@ -108,7 +121,9 @@ class _TaskBody extends StatelessWidget {
                 Text(
                   task.title,
                   style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.bold),
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 if (task.description != null && task.description!.isNotEmpty)
@@ -142,10 +157,7 @@ class _TaskBody extends StatelessWidget {
                   title: 'Created',
                   child: Text(
                     '${localizations.formatMediumDate(createdAt)} at '
-                    '${localizations.formatTimeOfDay(
-                      TimeOfDay.fromDateTime(createdAt),
-                      alwaysUse24HourFormat: false,
-                    )}',
+                    '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(createdAt), alwaysUse24HourFormat: false)}',
                   ),
                 ),
 
@@ -161,7 +173,9 @@ class _TaskBody extends StatelessWidget {
                     Text(
                       'Comments (${comments.length})',
                       style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -183,7 +197,7 @@ class _TaskBody extends StatelessWidget {
                     ),
                   )
                 else
-                  ...comments.map((c) => _CommentTile(comment: c)).toList(),
+                  ...comments.map((c) => _CommentTile(comment: c)),
 
                 // ── Activity ──
                 const SizedBox(height: 32),
@@ -211,10 +225,7 @@ class _TaskBody extends StatelessWidget {
         ),
 
         // ── Comment input at the bottom ──
-        _CommentInput(
-          taskId: task.id,
-          posting: postingComment,
-        ),
+        _CommentInput(taskId: task.id, posting: postingComment),
       ],
     );
   }
@@ -225,7 +236,7 @@ class _TaskBody extends StatelessWidget {
       children: [
         Expanded(
           child: DropdownButtonFormField<String>(
-            value: task.status,
+            initialValue: task.status,
             decoration: const InputDecoration(border: OutlineInputBorder()),
             items: statuses
                 .map((s) => DropdownMenuItem(value: s, child: Text(s)))
@@ -234,9 +245,9 @@ class _TaskBody extends StatelessWidget {
                 ? null
                 : (value) {
                     if (value != null && value != task.status) {
-                      context
-                          .read<TaskDetailBloc>()
-                          .add(TaskDetailStatusChanged(task.id, value));
+                      context.read<TaskDetailBloc>().add(
+                        TaskDetailStatusChanged(task.id, value),
+                      );
                     }
                   },
           ),
@@ -324,13 +335,17 @@ class _CommentTile extends StatelessWidget {
                         Text(
                           comment.authorName,
                           style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                         if (comment.authorRole == 'admin') ...[
                           const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.purple.shade50,
                               borderRadius: BorderRadius.circular(4),
@@ -391,8 +406,10 @@ class _CommentTile extends StatelessWidget {
             if (canDelete)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text('Delete comment',
-                    style: TextStyle(color: Colors.red)),
+                title: const Text(
+                  'Delete comment',
+                  style: TextStyle(color: Colors.red),
+                ),
                 onTap: () {
                   Navigator.pop(sheetCtx);
                   _confirmDelete(context);
@@ -430,8 +447,8 @@ class _CommentTile extends StatelessWidget {
               if (text.isEmpty) return;
               Navigator.pop(dialogCtx);
               context.read<TaskDetailBloc>().add(
-                    TaskCommentUpdateRequested(comment.id, text),
-                  );
+                TaskCommentUpdateRequested(comment.id, text),
+              );
             },
             child: const Text('Save'),
           ),
@@ -454,12 +471,11 @@ class _CommentTile extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(dialogCtx);
-              context
-                  .read<TaskDetailBloc>()
-                  .add(TaskCommentDeleteRequested(comment.id));
+              context.read<TaskDetailBloc>().add(
+                TaskCommentDeleteRequested(comment.id),
+              );
             },
-            child: const Text('Delete',
-                style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -498,7 +514,9 @@ class _CommentInputState extends State<_CommentInput> {
     final text = _ctrl.text.trim();
     if (text.isEmpty || widget.posting) return;
 
-    context.read<TaskDetailBloc>().add(TaskCommentSubmitted(widget.taskId, text));
+    context.read<TaskDetailBloc>().add(
+      TaskCommentSubmitted(widget.taskId, text),
+    );
     _ctrl.clear();
     FocusScope.of(context).unfocus();
   }
@@ -523,8 +541,10 @@ class _CommentInputState extends State<_CommentInput> {
                 decoration: const InputDecoration(
                   hintText: 'Write a comment…',
                   border: OutlineInputBorder(),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   isDense: true,
                 ),
               ),

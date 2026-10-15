@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/widgets/app_header.dart';
 import '../bloc/notification_bloc.dart';
 import '../bloc/notification_event.dart';
 import '../bloc/notification_state.dart';
@@ -30,8 +31,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceContainerLowest,
-      appBar: AppBar(
-        title: const Text('Notifications'),
+      appBar: AppHeader(
+        section: 'Notifications',
         actions: [
           BlocBuilder<NotificationBloc, NotificationState>(
             builder: (context, state) {

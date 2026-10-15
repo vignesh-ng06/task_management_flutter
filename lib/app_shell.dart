@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'features/auth/bloc/auth_bloc.dart';
-import 'features/auth/bloc/auth_state.dart';
 import 'features/home/ui/home_screen.dart';
 import 'features/notifications/bloc/notification_bloc.dart';
 import 'features/notifications/bloc/notification_state.dart';
@@ -12,8 +11,6 @@ import 'features/projects/ui/projects_screen.dart';
 import 'features/tasks/ui/tasks_screen.dart';
 import 'features/users/ui/users_screen.dart';
 import '../features/tasks/bloc/task_bloc.dart';
-import '../features/auth/bloc/auth_bloc.dart';
-import '../features/auth/bloc/auth_state.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});

@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:task_app/core/api/api_client.dart';
 import 'package:task_app/features/tasks/data/task_repository.dart';
@@ -73,6 +75,8 @@ class TaskDetailBloc extends Bloc<TaskDetailEvent, TaskDetailState> {
         event.taskId,
         title: event.title,
         description: event.description,
+        clearDescription: event.clearDescription,
+        priority: event.priority,
         dueDate: event.dueDate,
         clearDueDate: event.clearDueDate,
         assignedTo: event.assignedTo,
@@ -87,11 +91,17 @@ class TaskDetailBloc extends Bloc<TaskDetailEvent, TaskDetailState> {
       emit(
         state.copyWith(status: TaskDetailStatus.loaded, error: e.message),
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
+      developer.log(
+        'Failed to update task ${event.taskId}',
+        name: 'TaskDetailBloc',
+        error: error,
+        stackTrace: stackTrace,
+      );
       emit(
         state.copyWith(
           status: TaskDetailStatus.loaded,
-          error: 'Failed to update task',
+          error: 'Failed to update task: $error',
         ),
       );
     }

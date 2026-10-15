@@ -5,6 +5,7 @@ import 'package:task_app/features/profile/ui/profile_edit_sheet.dart';
 
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
+import '../../../core/widgets/app_header.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -16,7 +17,7 @@ class ProfileScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile'), centerTitle: false),
+      appBar: const AppHeader(section: 'Profile'),
       body: user == null
           ? const Center(child: Text('Not logged in'))
           : ListView(

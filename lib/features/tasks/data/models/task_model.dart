@@ -100,6 +100,7 @@ class Task {
   Task copyWith({
     String? title,
     String? description,
+    bool clearDescription = false,
     String? status,
     String? priority,
     int? priorityLevel,
@@ -115,7 +116,7 @@ class Task {
     return Task(
       id: id,
       title: title ?? this.title,
-      description: description ?? this.description,
+      description: clearDescription ? null : (description ?? this.description),
       status: status ?? this.status,
       priority: priority ?? this.priority,
       priorityLevel: priorityLevel ?? this.priorityLevel,

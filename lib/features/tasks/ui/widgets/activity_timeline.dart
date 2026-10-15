@@ -66,7 +66,7 @@ class ActivityTimeline extends StatelessWidget {
                       width: 24,
                       height: 24,
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.15),
+                        color: color.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(

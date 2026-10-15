@@ -3,13 +3,15 @@ import 'dart:developer';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
-  // Android emulator uses 10.0.2.2 to reach your Mac's localhost
-  static const String baseUrl = 'http://192.168.1.34:4000/api';
-  // If you run on iOS simulator later, use: http://localhost:5000
-  // If on Chrome (web), use: http://localhost:5000
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://192.168.1.47:4000/api',
+  );
 
-  final http.Client _client = http.Client();
+  final http.Client _client;
   String? _token;
+
+  ApiClient({http.Client? client}) : _client = client ?? http.Client();
 
   void setToken(String? token) => _token = token;
   String? get token => _token;

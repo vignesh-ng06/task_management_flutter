@@ -25,6 +25,8 @@ class TaskDetailUpdateRequested extends TaskDetailEvent {
   final int taskId;
   final String? title;
   final String? description;
+  final bool clearDescription;
+  final String? priority;
   final DateTime? dueDate;
   final bool clearDueDate;
   final int? assignedTo;
@@ -34,6 +36,8 @@ class TaskDetailUpdateRequested extends TaskDetailEvent {
     required this.taskId,
     this.title,
     this.description,
+    this.clearDescription = false,
+    this.priority,
     this.dueDate,
     this.clearDueDate = false,
     this.assignedTo,
@@ -45,6 +49,8 @@ class TaskDetailUpdateRequested extends TaskDetailEvent {
     taskId,
     title,
     description,
+    clearDescription,
+    priority,
     dueDate,
     clearDueDate,
     assignedTo,

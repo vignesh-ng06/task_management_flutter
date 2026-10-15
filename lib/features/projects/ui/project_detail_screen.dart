@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/widgets/app_header.dart';
+import '../../../core/widgets/app_feedback.dart';
 import '../../auth/bloc/auth_bloc.dart';
-import '../../auth/bloc/auth_state.dart';
+import '../../tasks/bloc/task_bloc.dart';
+import '../../tasks/bloc/task_event.dart';
 import '../../tasks/ui/task_detail_screen.dart';
 import '../../tasks/ui/task_form_sheet.dart';
 import '../../tasks/ui/widgets/task_card.dart';
@@ -43,21 +46,24 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Project'),
+      appBar: AppHeader(
+        section: 'Project details',
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),
       floatingActionButton: _canManage(context)
           ? FloatingActionButton.extended(
               heroTag: 'project-detail-new-task',
               onPressed: () async {
-                await showTaskFormSheet(context);
-                _refresh();
+                final saved = await showTaskFormSheet(
+                  context,
+                  projectId: widget.projectId,
+                );
+                if (!context.mounted || !saved) return;
+                context.read<TaskBloc>().add(const TasksRefreshRequested());
+                showSuccessSnackBar(context, 'Task created successfully');
+                await _refresh();
               },
               icon: const Icon(Icons.add),
               label: const Text('New task'),
@@ -74,8 +80,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline,
-                      size: 48, color: Colors.grey),
+                  const Icon(Icons.error_outline, size: 48, color: Colors.grey),
                   const SizedBox(height: 12),
                   Text('Error: ${snap.error}'),
                   const SizedBox(height: 12),
@@ -99,7 +104,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 Text(
                   project.name,
                   style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold),
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 if (project.description != null &&
                     project.description!.isNotEmpty) ...[
@@ -119,7 +126,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     Text(
                       'Tasks (${tasks.length})',
                       style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -130,30 +139,37 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     child: Center(
                       child: Column(
                         children: [
-                          Icon(Icons.inbox_outlined,
-                              size: 48, color: Colors.grey[400]),
+                          Icon(
+                            Icons.inbox_outlined,
+                            size: 48,
+                            color: Colors.grey[400],
+                          ),
                           const SizedBox(height: 8),
-                          Text('No tasks in this project yet',
-                              style: TextStyle(color: Colors.grey[600])),
+                          Text(
+                            'No tasks in this project yet',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
                         ],
                       ),
                     ),
                   )
                 else
-                  ...tasks.map((task) => TaskCard(
-                        key: ValueKey(
-                            'proj-task-${task.id}-${task.status}-${task.priority}'),
-                        task: task,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  TaskDetailScreen(taskId: task.id),
-                            ),
-                          ).then((_) => _refresh());
-                        },
-                      )),
+                  ...tasks.map(
+                    (task) => TaskCard(
+                      key: ValueKey(
+                        'proj-task-${task.id}-${task.status}-${task.priority}',
+                      ),
+                      task: task,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TaskDetailScreen(taskId: task.id),
+                          ),
+                        ).then((_) => _refresh());
+                      },
+                    ),
+                  ),
               ],
             ),
           );

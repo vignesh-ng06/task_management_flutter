@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/widgets/app_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
-import '../../auth/bloc/auth_state.dart';
 import '../bloc/project_bloc.dart';
 import '../bloc/project_event.dart';
 import '../bloc/project_state.dart';
@@ -37,8 +37,8 @@ class _ProjectsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Projects'),
+      appBar: AppHeader(
+        section: 'Projects',
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -86,7 +86,7 @@ class _ProjectsView extends StatelessWidget {
                 childAspectRatio: 0.95,
               ),
               itemCount: 4,
-              itemBuilder: (_, __) => const ProjectCardSkeleton(),
+              itemBuilder: (_, _) => const ProjectCardSkeleton(),
             );
           }
           if (state.status == ProjectListStatus.error &&
@@ -152,21 +152,19 @@ class _ProjectsView extends StatelessWidget {
               itemCount: state.projects.length,
               itemBuilder: (_, i) {
                 final project = state.projects[i];
+                final projectBloc = context.read<ProjectBloc>();
                 return _ProjectCard(
                   key: ValueKey(
                       'proj-${project.id}-${project.name}-${project.description}'),
                   project: project,
-                  onTap: () {
-                    Navigator.push(
+                  onTap: () async {
+                    await Navigator.push<void>(
                       context,
-                      MaterialPageRoute(
+                      MaterialPageRoute<void>(
                         builder: (_) => ProjectDetailScreen(projectId: project.id),
                       ),
-                    ).then((_) {
-                      context
-                          .read<ProjectBloc>()
-                          .add(const ProjectsLoadRequested());
-                    });
+                    );
+                    projectBloc.add(const ProjectsLoadRequested());
                   },
                   onLongPress: _canManage(context)
                       ? () => _showActions(context, project)
@@ -267,7 +265,7 @@ class _ProjectCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.indigo.withOpacity(0.1),
+                  color: Colors.indigo.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.folder, color: Colors.indigo, size: 18),
