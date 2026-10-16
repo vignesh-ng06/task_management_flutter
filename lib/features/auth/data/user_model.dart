@@ -1,3 +1,5 @@
+import 'package:task_app/features/projects/data/models/project_ref.dart';
+
 class User {
   final int id;
   final String email;
@@ -10,6 +12,8 @@ class User {
   final String? companySize;
   final bool isActive;
   final DateTime? createdAt;
+  final List<ProjectRef> projects;
+  final int projectCount;
 
   User({
     required this.id,
@@ -23,6 +27,8 @@ class User {
     this.companySize,
     this.isActive = true,
     this.createdAt,
+    this.projects = const [],
+    this.projectCount = 0,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -49,23 +55,53 @@ class User {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
+      projects: (json['projects'] as List? ?? [])
+          .cast<Map<String, dynamic>>()
+          .map(ProjectRef.fromJson)
+          .toList(),
+      projectCount: (json['projectCount'] as num? ?? 0).toInt(),
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'email': email,
-        'name': name,
-        'role': role,
-        'companyId': companyId,
-        'website': website,
-        'companySize': companySize,
-        'isActive': isActive,
-        'createdAt': createdAt?.toIso8601String(),
-      };
+    'id': id,
+    'email': email,
+    'name': name,
+    'role': role,
+    'companyId': companyId,
+    'website': website,
+    'companySize': companySize,
+    'isActive': isActive,
+    'createdAt': createdAt?.toIso8601String(),
+    'projects': projects.map((p) => p.toJson()).toList(),
+    'projectCount': projectCount,
+  };
 
-  String get displayName =>
-      (name?.isNotEmpty == true) ? name! : email;
+  User copyWith({
+    String? name,
+    String? role,
+    bool? isActive,
+    List<ProjectRef>? projects,
+    int? projectCount,
+  }) {
+    return User(
+      id: id,
+      email: email,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      companyId: companyId,
+      companyName: companyName,
+      industry: industry,
+      website: website,
+      companySize: companySize,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt,
+      projects: projects ?? this.projects,
+      projectCount: projectCount ?? this.projectCount,
+    );
+  }
+
+  String get displayName => (name?.isNotEmpty == true) ? name! : email;
 
   String get initials {
     final n = name?.trim();

@@ -1,4 +1,5 @@
 import '../../../tasks/data/models/task_model.dart';
+import '../../../auth/data/user_model.dart';
 
 class Project {
   final int id;
@@ -11,6 +12,7 @@ class Project {
   final DateTime updatedAt;
   final int taskCount;
   final List<Task> tasks;
+  final List<User> members; // Optional: List of users associated with the project
 
   // Nested objects (present when backend includes them)
   final Map<String, dynamic>? creator;
@@ -27,6 +29,7 @@ class Project {
     this.taskCount = 0,
     this.creator,
     this.tasks = const [],
+    this.members = const [],
   });
 
   
@@ -57,6 +60,10 @@ factory Project.fromJson(Map<String, dynamic> json) {
           .where((t) => t['isActive'] != false)
           .map(Task.fromJson)
           .toList(),
+      members: (json['members'] as List? ?? [])
+          .cast<Map<String, dynamic>>()
+          .map(User.fromJson)
+          .toList(),
     );
   }
 
@@ -78,6 +85,7 @@ Project copyWith({
   bool? isActive,
   int? taskCount,
   List<Task>? tasks,
+  List<User>? members,
 }) {
   return Project(
     id: id,
@@ -91,6 +99,7 @@ Project copyWith({
     taskCount: taskCount ?? this.taskCount,
     creator: creator,
     tasks: tasks ?? this.tasks,
+    members: members ?? this.members
   );
 }
 }

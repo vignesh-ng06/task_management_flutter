@@ -20,10 +20,15 @@ class ProjectRepository {
   Future<Project> createProject({
     required String name,
     String? description,
+    List<int>? memberIds,
   }) async {
     final body = <String, dynamic>{'name': name};
     if (description != null && description.isNotEmpty) {
       body['description'] = description;
+    }
+
+    if (memberIds != null) {
+      body['memberIds'] = memberIds;
     }
     final data = await _api.post('/projects/create', body);
     return Project.fromJson(data);
@@ -33,10 +38,13 @@ class ProjectRepository {
     int id, {
     String? name,
     String? description,
+    List<int>? memberIds,
   }) async {
     final body = <String, dynamic>{};
     if (name != null) body['name'] = name;
     if (description != null) body['description'] = description;
+
+    if (memberIds != null) body['memberIds'] = memberIds;
 
     final data = await _api.put('/projects/update/$id', body);
     return Project.fromJson(data);
@@ -45,5 +53,18 @@ class ProjectRepository {
   /// Soft delete on backend (isActive = false)
   Future<void> deleteProject(int id) async {
     await _api.delete('/projects/delete/$id');
+  }
+
+//New methods for member management
+
+  Future<Project> addMembers(int projectId, List<int> userIds) async {
+    final data = await _api.post('/projects/$projectId/members', {
+      'userIds': userIds,
+    });
+    return Project.fromJson(data);
+  }
+
+  Future<void> removeMember(int projectId, int userId) async {
+    await _api.delete('/projects/$projectId/members/$userId');
   }
 }

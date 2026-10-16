@@ -12,6 +12,8 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     on<ProjectCreateRequested>(_onCreate);
     on<ProjectUpdateRequested>(_onUpdate);
     on<ProjectDeleteRequested>(_onDelete);
+    on<ProjectMembersUpdateRequested>(_onMembersUpdate);
+
   }
 
   Future<void> _onLoad(
@@ -45,6 +47,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
       final project = await _repo.createProject(
         name: event.name,
         description: event.description,
+        memberIds: event.memberIds,
       );
       // Prepend so it shows at the top
       emit(state.copyWith(
@@ -79,6 +82,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         event.id,
         name: event.name,
         description: event.description,
+        memberIds: event.memberIds,
       );
       final merged = serverProject.copyWith(
         taskCount: original.taskCount,
@@ -117,4 +121,31 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
       emit(state.copyWith(projects: rolledBack, error: e.message));
     }
   }
+
+
+Future<void> _onMembersUpdate(
+    ProjectMembersUpdateRequested event,
+    Emitter<ProjectState> emit,
+  ) async {
+    final index = state.projects.indexWhere((p) => p.id == event.projectId);
+    if (index == -1) return;
+
+    try {
+      final updated = await _repo.updateProject(
+        event.projectId,
+        memberIds: event.memberIds,
+      );
+      final merged = updated.copyWith(
+        taskCount: state.projects[index].taskCount,
+      );
+      final confirmed = [...state.projects]..[index] = merged;
+      emit(
+        state.copyWith(projects: confirmed, successMessage: 'Members updated'),
+      );
+    } on ApiException catch (e) {
+      emit(state.copyWith(error: e.message));
+    }
+  }
+
+
 }

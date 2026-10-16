@@ -13,7 +13,7 @@ Future<void> showTaskDetailEditSheet(BuildContext context, Task task) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
     final users = await context.read<UserRepository>().listUsers(
-      includeInactive: false,
+      isActive: false,
     );
     if (!context.mounted) return;
 

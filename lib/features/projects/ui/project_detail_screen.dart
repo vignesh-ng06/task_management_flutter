@@ -11,6 +11,8 @@ import '../../tasks/ui/task_form_sheet.dart';
 import '../../tasks/ui/widgets/task_card.dart';
 import '../data/models/project.dart';
 import '../data/project_repository.dart';
+import '../../auth/data/user_model.dart';
+import 'project_members_sheet.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final int projectId;
@@ -62,7 +64,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 );
                 if (!context.mounted || !saved) return;
                 context.read<TaskBloc>().add(const TasksRefreshRequested());
-                showSuccessSnackBar(context, 'Task created successfully');
+               showSuccessSnackBar(context, 'Task created successfully');
                 await _refresh();
               },
               icon: const Icon(Icons.add),
@@ -116,6 +118,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     style: TextStyle(color: Colors.grey[700], fontSize: 14),
                   ),
                 ],
+
+                const SizedBox(height: 16),
+                _ProjectMembersRow(
+                  project: project,
+                  onManage: () async {
+                    await showProjectMembersSheet(context, project);
+                    _refresh();
+                  },
+                ),
+
                 const SizedBox(height: 20),
                 const Divider(),
                 const SizedBox(height: 12),
@@ -175,6 +187,82 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class _ProjectMembersRow extends StatelessWidget {
+  final Project project;
+  final VoidCallback onManage;
+  const _ProjectMembersRow({required this.project, required this.onManage});
+
+  @override
+  Widget build(BuildContext context) {
+    final members = project.members;
+    return Row(
+      children: [
+        const Icon(Icons.group_outlined, size: 18, color: Colors.grey),
+        const SizedBox(width: 8),
+        Text(
+          '${members.length} ${members.length == 1 ? 'member' : 'members'}',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Avatar stack
+        if (members.isNotEmpty)
+          SizedBox(
+            height: 28,
+            width: (members.length > 4 ? 4 : members.length) * 22.0 + 8,
+            child: Stack(
+              children: List.generate(
+                members.length > 4 ? 4 : members.length,
+                (i) {
+                  final u = members[i];
+                  return Positioned(
+                    left: i * 20.0,
+                    child: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: Colors.white,
+                      child: CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Colors.indigo.shade50,
+                        child: Text(
+                          u.initials,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.indigo.shade900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        if (members.length > 4)
+          Padding(
+            padding: const EdgeInsets.only(left: 6),
+            child: Text(
+              '+${members.length - 4}',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+        const Spacer(),
+        TextButton.icon(
+          onPressed: onManage,
+          icon: const Icon(Icons.settings, size: 16),
+          label: const Text('Manage'),
+        ),
+      ],
     );
   }
 }

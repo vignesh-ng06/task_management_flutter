@@ -17,6 +17,7 @@ import 'features/tasks/data/task_repository.dart';
 import 'app_shell.dart';
 import 'features/users/data/user_repository.dart';
 import 'features/projects/data/project_repository.dart';
+import 'features/projects/bloc/project_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/data/dashboard_repository.dart';
 
@@ -56,6 +57,7 @@ class TaskApp extends StatelessWidget {
           ),
           BlocProvider(create: (_) => TaskBloc(taskRepo)),
           BlocProvider(create: (_) => NotificationBloc(notifRepo)),
+          BlocProvider(create: (_) => ProjectBloc(projectRepo)),
         ],
         child: MaterialApp(
           title: 'TaskFlow',

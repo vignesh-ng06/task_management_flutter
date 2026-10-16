@@ -34,7 +34,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     );
     try {
       final users = await _repo.listUsers(
-        includeInactive: event.includeInactive,
+        isActive: event.includeInactive,
       );
       emit(state.copyWith(status: UserListStatus.loaded, users: users));
     } on ApiException catch (e) {

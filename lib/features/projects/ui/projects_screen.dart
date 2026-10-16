@@ -7,22 +7,27 @@ import '../bloc/project_bloc.dart';
 import '../bloc/project_event.dart';
 import '../bloc/project_state.dart';
 import '../data/models/project.dart';
-import '../data/project_repository.dart';
 import 'project_detail_screen.dart';
 import 'project_form_sheet.dart';
 import 'widgets/project_card_skeleton.dart';
 
-class ProjectsScreen extends StatelessWidget {
+class ProjectsScreen extends StatefulWidget {
   const ProjectsScreen({super.key});
 
   @override
+  State<ProjectsScreen> createState() => _ProjectsScreenState();
+}
+
+class _ProjectsScreenState extends State<ProjectsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<ProjectBloc>().add(const ProjectsLoadRequested());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) =>
-          ProjectBloc(context.read<ProjectRepository>())
-            ..add(const ProjectsLoadRequested()),
-      child: const _ProjectsView(),
-    );
+    return const _ProjectsView();
   }
 }
 
@@ -100,9 +105,9 @@ class _ProjectsView extends StatelessWidget {
                   Text(state.error ?? 'Error loading projects'),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () => context
-                        .read<ProjectBloc>()
-                        .add(const ProjectsLoadRequested()),
+                    onPressed: () => context.read<ProjectBloc>().add(
+                      const ProjectsLoadRequested(),
+                    ),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -112,9 +117,7 @@ class _ProjectsView extends StatelessWidget {
           if (state.projects.isEmpty) {
             return RefreshIndicator(
               onRefresh: () async {
-                context
-                    .read<ProjectBloc>()
-                    .add(const ProjectsLoadRequested());
+                context.read<ProjectBloc>().add(const ProjectsLoadRequested());
                 await Future.delayed(const Duration(milliseconds: 500));
               },
               child: ListView(
@@ -123,11 +126,12 @@ class _ProjectsView extends StatelessWidget {
                   Center(
                     child: Column(
                       children: [
-                        Icon(Icons.folder_open,
-                            size: 56, color: Colors.grey),
+                        Icon(Icons.folder_open, size: 56, color: Colors.grey),
                         SizedBox(height: 12),
-                        Text('No projects yet',
-                            style: TextStyle(color: Colors.grey)),
+                        Text(
+                          'No projects yet',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
@@ -155,13 +159,15 @@ class _ProjectsView extends StatelessWidget {
                 final projectBloc = context.read<ProjectBloc>();
                 return _ProjectCard(
                   key: ValueKey(
-                      'proj-${project.id}-${project.name}-${project.description}'),
+                    'proj-${project.id}-${project.name}-${project.description}',
+                  ),
                   project: project,
                   onTap: () async {
                     await Navigator.push<void>(
                       context,
                       MaterialPageRoute<void>(
-                        builder: (_) => ProjectDetailScreen(projectId: project.id),
+                        builder: (_) =>
+                            ProjectDetailScreen(projectId: project.id),
                       ),
                     );
                     projectBloc.add(const ProjectsLoadRequested());
@@ -195,8 +201,10 @@ class _ProjectsView extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('Delete project',
-                  style: TextStyle(color: Colors.red)),
+              title: const Text(
+                'Delete project',
+                style: TextStyle(color: Colors.red),
+              ),
               onTap: () {
                 Navigator.pop(sheetCtx);
                 _confirmDelete(context, project);
@@ -224,7 +232,9 @@ class _ProjectsView extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(dialogCtx);
-              context.read<ProjectBloc>().add(ProjectDeleteRequested(project.id));
+              context.read<ProjectBloc>().add(
+                ProjectDeleteRequested(project.id),
+              );
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
@@ -262,8 +272,7 @@ class _ProjectCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.indigo.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -292,8 +301,11 @@ class _ProjectCard extends StatelessWidget {
               const Spacer(),
               Row(
                 children: [
-                  const Icon(Icons.check_circle_outline,
-                      size: 14, color: Colors.grey),
+                  const Icon(
+                    Icons.check_circle_outline,
+                    size: 14,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '${project.taskCount} tasks',

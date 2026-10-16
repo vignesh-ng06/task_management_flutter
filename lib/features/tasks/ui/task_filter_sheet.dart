@@ -17,7 +17,7 @@ Future<void> showTaskFilterSheet(
   final results = await Future.wait([
     projectRepo.listProjects(),
     if (showAssignee)
-      userRepo.listUsers(includeInactive: false)
+      userRepo.listUsers(isActive: false)
     else
       Future.value([]),
   ]);

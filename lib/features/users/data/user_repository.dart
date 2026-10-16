@@ -5,14 +5,15 @@ class UserRepository {
   final ApiClient _api;
   UserRepository(this._api);
 
-  Future<List<User>> listUsers({bool includeInactive = false}) async {
-    final query = includeInactive ? '?status=inactive' : '';
-    final response = await _api.get('/users/getAllUsers$query');
-    final usersData = response is List ? response : response['data'] as List;
-    return usersData
-        .map((json) => User.fromJson(Map<String, dynamic>.from(json as Map)))
-        .toList();
-  }
+  
+Future<List<User>> listUsers({bool isActive = true}) async {
+  final query = isActive ? '' : '?status=inactive';
+  final response = await _api.get('/users/getAllUsers$query');
+  final usersData = response is List ? response : response['data'] as List;
+  return usersData
+      .map((json) => User.fromJson(Map<String, dynamic>.from(json as Map)))
+      .toList();
+}
 
   Future<User> createUser({
     required String email,

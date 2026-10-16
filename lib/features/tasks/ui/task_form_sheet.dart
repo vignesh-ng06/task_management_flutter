@@ -5,7 +5,6 @@ import '../../../core/api/api_client.dart';
 import '../../auth/data/user_model.dart';
 import '../../projects/data/models/project.dart';
 import '../../projects/data/project_repository.dart';
-import '../../users/data/user_repository.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
@@ -16,19 +15,11 @@ Future<bool> showTaskFormSheet(
   Task? existing,
   int? projectId,
 }) async {
-  // Preload projects and users in parallel
   final projectRepo = context.read<ProjectRepository>();
-  final userRepo = context.read<UserRepository>();
   final messenger = ScaffoldMessenger.of(context);
   late final List<Project> projects;
-  late final List<User> users;
   try {
-    final results = await Future.wait([
-      projectRepo.listProjects(),
-      userRepo.listUsers(includeInactive: false),
-    ]);
-    projects = results[0] as List<Project>;
-    users = results[1] as List<User>;
+    projects = await projectRepo.listProjects();
   } on ApiException catch (e) {
     if (context.mounted) {
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
@@ -56,7 +47,7 @@ Future<bool> showTaskFormSheet(
             existing: existing,
             initialProjectId: projectId,
             projects: projects,
-            users: users,
+            projectRepo: projectRepo,
           ),
         ),
       ) ??
@@ -67,13 +58,13 @@ class _TaskFormSheet extends StatefulWidget {
   final Task? existing;
   final int? initialProjectId;
   final List<Project> projects;
-  final List<User> users;
+  final ProjectRepository projectRepo;
 
   const _TaskFormSheet({
     this.existing,
     this.initialProjectId,
     required this.projects,
-    required this.users,
+    required this.projectRepo,
   });
 
   @override
@@ -91,6 +82,10 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
   bool _isSaving = false;
   String? _saveError;
 
+  // Assignee list for the current project
+  List<User> _availableAssignees = [];
+  bool _loadingMembers = false;
+
   bool get isEdit => widget.existing != null;
 
   @override
@@ -104,12 +99,14 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       _priority = widget.existing!.priority;
       _dueDate = widget.existing!.dueDate;
     } else if (widget.initialProjectId != null &&
-        widget.projects.any(
-          (project) => project.id == widget.initialProjectId,
-        )) {
+        widget.projects.any((p) => p.id == widget.initialProjectId)) {
       _projectId = widget.initialProjectId;
     } else if (widget.projects.isNotEmpty) {
       _projectId = widget.projects.first.id;
+    }
+
+    if (_projectId != null) {
+      _loadMembersForProject(_projectId!);
     }
   }
 
@@ -118,6 +115,35 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
     _titleCtrl.dispose();
     _descCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadMembersForProject(int projectId) async {
+    setState(() {
+      _loadingMembers = true;
+      _availableAssignees = [];
+    });
+
+    try {
+      final project = await widget.projectRepo.getProject(projectId);
+      if (!mounted) return;
+
+      setState(() {
+        _availableAssignees = project.members;
+
+        // If current assignee is no longer in the project, clear it
+        if (_assigneeId != null &&
+            !_availableAssignees.any((u) => u.id == _assigneeId)) {
+          _assigneeId = null;
+        }
+        _loadingMembers = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _availableAssignees = [];
+        _loadingMembers = false;
+      });
+    }
   }
 
   Future<void> _pickDueDate() async {
@@ -235,6 +261,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                 ),
               ),
               const SizedBox(height: 20),
+
               if (_saveError != null) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -300,31 +327,19 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                       (p) => DropdownMenuItem(value: p.id, child: Text(p.name)),
                     )
                     .toList(),
-                onChanged: (v) => setState(() => _projectId = v),
+                onChanged: (v) {
+                  if (v == null) return;
+                  setState(() {
+                    _projectId = v;
+                    _assigneeId = null;
+                  });
+                  _loadMembersForProject(v);
+                },
               ),
               const SizedBox(height: 12),
 
-              // Assignee dropdown
-              DropdownButtonFormField<int?>(
-                initialValue: _assigneeId,
-                decoration: const InputDecoration(
-                  labelText: 'Assign to (optional)',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  const DropdownMenuItem(
-                    value: null,
-                    child: Text('Unassigned'),
-                  ),
-                  ...widget.users.map(
-                    (u) => DropdownMenuItem(
-                      value: u.id,
-                      child: Text('${u.displayName} (${u.role})'),
-                    ),
-                  ),
-                ],
-                onChanged: (v) => setState(() => _assigneeId = v),
-              ),
+              // Assignee dropdown — driven by project members
+              _buildAssigneeField(),
               const SizedBox(height: 12),
 
               // Priority selector
@@ -388,6 +403,70 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAssigneeField() {
+    // Still loading members
+    if (_loadingMembers) {
+      return InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Assign to (optional)',
+          border: OutlineInputBorder(),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              SizedBox(
+                height: 16,
+                width: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 10),
+              Text('Loading members…', style: TextStyle(color: Colors.grey)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Project has no members
+    if (_availableAssignees.isEmpty) {
+      return InputDecorator(
+        decoration: const InputDecoration(
+          labelText: 'Assign to (optional)',
+          border: OutlineInputBorder(),
+          helperText: 'No members in this project yet',
+        ),
+        child: const Text(
+          'Unassigned',
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    // Project members available
+    return DropdownButtonFormField<int?>(
+      initialValue: _assigneeId,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Assign to (optional)',
+        border: OutlineInputBorder(),
+      ),
+      items: [
+        const DropdownMenuItem(value: null, child: Text('Unassigned')),
+        ..._availableAssignees.map(
+          (u) => DropdownMenuItem(
+            value: u.id,
+            child: Text(
+              '${u.displayName} · ${u.role}',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ],
+      onChanged: (v) => setState(() => _assigneeId = v),
     );
   }
 }
