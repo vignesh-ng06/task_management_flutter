@@ -71,10 +71,21 @@ class _ProjectsView extends StatelessWidget {
             );
           }
           if (state.successMessage != null) {
+            final isUpdate = state.successMessage == 'Project updated';
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.successMessage!),
-                backgroundColor: Colors.green,
+                content: Text(
+                  state.successMessage!,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                backgroundColor: isUpdate
+                    ? const Color(0xFF3B82F6)
+                    : const Color(0xFF10B981),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
           }
@@ -120,19 +131,61 @@ class _ProjectsView extends StatelessWidget {
                 context.read<ProjectBloc>().add(const ProjectsLoadRequested());
                 await Future.delayed(const Duration(milliseconds: 500));
               },
-              child: ListView(
-                children: const [
-                  SizedBox(height: 200),
-                  Center(
-                    child: Column(
-                      children: [
-                        Icon(Icons.folder_open, size: 56, color: Colors.grey),
-                        SizedBox(height: 12),
-                        Text(
-                          'No projects yet',
-                          style: TextStyle(color: Colors.grey),
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Container(
+                        margin: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 32,
                         ),
-                      ],
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.folder_outlined,
+                              size: 56,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'No projects yet',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Projects group related tasks together.\nStart with one — like "Marketing Q4".',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            if (_canManage(context)) ...[
+                              const SizedBox(height: 16),
+                              FilledButton.icon(
+                                onPressed: () => showProjectFormSheet(context),
+                                icon: const Icon(Icons.add),
+                                label: const Text('New project'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],

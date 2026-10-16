@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/data/user_model.dart';
 import '../../projects/data/models/project.dart';
 import '../../projects/data/project_repository.dart';
@@ -79,6 +80,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
   int? _assigneeId;
   String _priority = 'MEDIUM';
   DateTime? _dueDate;
+  bool _dueDateAutoSet = false;
   bool _isSaving = false;
   String? _saveError;
 
@@ -105,6 +107,11 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       _projectId = widget.projects.first.id;
     }
 
+    if (!isEdit && _dueDate == null) {
+      _dueDate = DateTime.now().add(const Duration(days: 1));
+      _dueDateAutoSet = true;
+    }
+
     if (_projectId != null) {
       _loadMembersForProject(_projectId!);
     }
@@ -127,8 +134,26 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       final project = await widget.projectRepo.getProject(projectId);
       if (!mounted) return;
 
+      final currentUserId = context.read<AuthBloc>().state.user?.id;
+      final assignees = [...project.members];
+      const roleOrder = {'manager': 0, 'employee': 1, 'admin': 2};
+      assignees.sort((a, b) {
+        final aIsCurrentUser = a.id == currentUserId;
+        final bIsCurrentUser = b.id == currentUserId;
+        if (aIsCurrentUser != bIsCurrentUser) {
+          return aIsCurrentUser ? -1 : 1;
+        }
+
+        final roleComparison = (roleOrder[a.role] ?? roleOrder.length)
+            .compareTo(roleOrder[b.role] ?? roleOrder.length);
+        if (roleComparison != 0) return roleComparison;
+        return a.displayName.toLowerCase().compareTo(
+              b.displayName.toLowerCase(),
+            );
+      });
+
       setState(() {
-        _availableAssignees = project.members;
+        _availableAssignees = assignees;
 
         // If current assignee is no longer in the project, clear it
         if (_assigneeId != null &&
@@ -153,7 +178,12 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       firstDate: DateTime.now().subtract(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
     );
-    if (picked != null) setState(() => _dueDate = picked);
+    if (picked != null) {
+      setState(() {
+        _dueDate = picked;
+        _dueDateAutoSet = false;
+      });
+    }
   }
 
   void _submit() {
@@ -370,7 +400,10 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                     suffixIcon: _dueDate != null
                         ? IconButton(
                             icon: const Icon(Icons.clear),
-                            onPressed: () => setState(() => _dueDate = null),
+                            onPressed: () => setState(() {
+                              _dueDate = null;
+                              _dueDateAutoSet = false;
+                            }),
                           )
                         : const Icon(Icons.calendar_today),
                   ),
@@ -384,6 +417,13 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                   ),
                 ),
               ),
+              if (_dueDateAutoSet) ...[
+                const SizedBox(height: 4),
+                const Text(
+                  'Defaults to tomorrow — change if needed',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                ),
+              ],
               const SizedBox(height: 20),
 
               FilledButton(

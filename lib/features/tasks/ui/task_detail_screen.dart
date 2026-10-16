@@ -63,7 +63,11 @@ class _TaskDetailView extends StatelessWidget {
                 previous.status != TaskDetailStatus.updating),
         listener: (context, state) {
           if (state.status == TaskDetailStatus.loaded && state.error == null) {
-            showSuccessSnackBar(context, 'Task updated successfully');
+            showSuccessSnackBar(
+              context,
+              'Task updated',
+              backgroundColor: const Color(0xFF3B82F6),
+            );
           } else if (state.error != null) {
             ScaffoldMessenger.of(context)
                 .showSnackBar(SnackBar(content: Text(state.error!)));

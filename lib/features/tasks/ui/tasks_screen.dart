@@ -196,7 +196,10 @@ Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
   context.read<TaskBloc>().add(const TasksRefreshRequested());
   showSuccessSnackBar(
     context,
-    existing == null ? 'Task created successfully' : 'Task updated successfully',
+    existing == null ? 'Task created' : 'Task updated',
+    backgroundColor: existing == null
+        ? const Color(0xFF10B981)
+        : const Color(0xFF3B82F6),
   );
 }
 
@@ -240,18 +243,67 @@ Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
           context.read<TaskBloc>().add(const TasksRefreshRequested());
           await Future.delayed(const Duration(milliseconds: 500));
         },
-        child: ListView(
-          children: const [
-            SizedBox(height: 180),
-            Center(
-              child: Column(
-                children: [
-                  Icon(Icons.check_circle_outline,
-                      size: 56, color: Colors.grey),
-                  SizedBox(height: 12),
-                  Text('No tasks found',
-                      style: TextStyle(color: Colors.grey)),
-                ],
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 32,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        state.mode == TaskMode.mine
+                            ? Icons.coffee_outlined
+                            : Icons.assignment_outlined,
+                        size: 56,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        state.mode == TaskMode.mine
+                            ? "You're all caught up"
+                            : 'No tasks in your company yet',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        state.mode == TaskMode.mine
+                            ? 'When someone assigns you a task,\nit will show up here.'
+                            : 'Create your first task to get started.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      if (state.mode == TaskMode.all && canManage) ...[
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: () => _openTaskForm(context),
+                          icon: const Icon(Icons.add),
+                          label: const Text('New task'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ],

@@ -39,6 +39,9 @@ class _ProjectFormSheetState extends State<_ProjectFormSheet> {
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   final _searchCtrl = TextEditingController();
+  final _repositoryUrlCtrl = TextEditingController();
+  final _designDocsCtrl = TextEditingController();
+  final _goalCtrl = TextEditingController();
 
   final Set<int> _selectedMemberIds = {};
   String _memberSearch = '';
@@ -60,6 +63,9 @@ class _ProjectFormSheetState extends State<_ProjectFormSheet> {
     _nameCtrl.dispose();
     _descCtrl.dispose();
     _searchCtrl.dispose();
+    _repositoryUrlCtrl.dispose();
+    _designDocsCtrl.dispose();
+    _goalCtrl.dispose();
     super.dispose();
   }
 
@@ -162,6 +168,66 @@ class _ProjectFormSheetState extends State<_ProjectFormSheet> {
                       border: OutlineInputBorder(),
                       alignLabelWithHint: true,
                     ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  const Row(
+                    children: [
+                      Icon(Icons.attach_file, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Project links & files',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _repositoryUrlCtrl,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'Repository URL',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.link),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _designDocsCtrl,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'Design / Docs',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.link),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(Icons.attach_file),
+                    label: const Text('Attach file'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF94A3B8),
+                      side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _goalCtrl,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Goal',
+                      border: OutlineInputBorder(),
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Links will be saved in a future update',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                   ),
                   const SizedBox(height: 20),
 

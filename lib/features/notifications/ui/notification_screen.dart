@@ -344,47 +344,46 @@ class _EmptyNotifications extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final noNotifications = !hasNotifications;
 
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(32, 8, 32, 72),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                unreadOnly
-                    ? Icons.mark_email_read_outlined
-                    : Icons.notifications_none_rounded,
-                size: 34,
-                color: colorScheme.primary,
-              ),
+            Icon(
+              noNotifications
+                  ? Icons.notifications_off_outlined
+                  : Icons.mark_email_read_outlined,
+              size: 56,
+              color: const Color(0xFF94A3B8),
             ),
             const SizedBox(height: 16),
             Text(
-              unreadOnly && hasNotifications
-                  ? 'You’re all caught up'
-                  : 'No notifications yet',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+              noNotifications ? 'No notifications' : 'You’re all caught up',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0F172A),
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              unreadOnly && hasNotifications
-                  ? 'There are no unread updates right now.'
-                  : 'When there’s an update, you’ll find it here.',
+              noNotifications
+                  ? 'You’ll see updates here when tasks are\nassigned or commented on.'
+                  : 'There are no unread updates right now.',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
               ),
             ),
           ],

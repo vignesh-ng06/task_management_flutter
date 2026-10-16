@@ -11,7 +11,6 @@ import '../../tasks/ui/task_form_sheet.dart';
 import '../../tasks/ui/widgets/task_card.dart';
 import '../data/models/project.dart';
 import '../data/project_repository.dart';
-import '../../auth/data/user_model.dart';
 import 'project_members_sheet.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
@@ -40,6 +39,19 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     await _future;
   }
 
+  Future<void> _createTask(BuildContext context, {int? projectId}) async {
+    final saved = await showTaskFormSheet(context, projectId: projectId);
+    if (!context.mounted || !saved) return;
+
+    context.read<TaskBloc>().add(const TasksRefreshRequested());
+    showSuccessSnackBar(
+      context,
+      'Task created',
+      backgroundColor: const Color(0xFF10B981),
+    );
+    await _refresh();
+  }
+
   bool _canManage(BuildContext context) {
     final role = context.watch<AuthBloc>().state.user?.role;
     return role == 'admin' || role == 'manager';
@@ -57,16 +69,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       floatingActionButton: _canManage(context)
           ? FloatingActionButton.extended(
               heroTag: 'project-detail-new-task',
-              onPressed: () async {
-                final saved = await showTaskFormSheet(
-                  context,
-                  projectId: widget.projectId,
-                );
-                if (!context.mounted || !saved) return;
-                context.read<TaskBloc>().add(const TasksRefreshRequested());
-               showSuccessSnackBar(context, 'Task created successfully');
-                await _refresh();
-              },
+              onPressed: () =>
+                  _createTask(context, projectId: widget.projectId),
               icon: const Icon(Icons.add),
               label: const Text('New task'),
             )
@@ -119,6 +123,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   ),
                 ],
 
+                // TODO: wire to backend when goal, links, and files are available on Project.
                 const SizedBox(height: 16),
                 _ProjectMembersRow(
                   project: project,
@@ -147,21 +152,57 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 const SizedBox(height: 12),
                 if (tasks.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 32),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            size: 48,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'No tasks in this project yet',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                        ],
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 32,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.description_outlined,
+                              size: 56,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'No tasks yet in this project',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Break this project into small tasks.\nEach task = one clear action.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            if (_canManage(context)) ...[
+                              const SizedBox(height: 16),
+                              FilledButton.icon(
+                                onPressed: () =>
+                                    _createTask(context, projectId: project.id),
+                                icon: const Icon(Icons.add),
+                                label: const Text('Add first task'),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                   )
@@ -205,10 +246,7 @@ class _ProjectMembersRow extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           '${members.length} ${members.length == 1 ? 'member' : 'members'}',
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
         const SizedBox(width: 12),
         // Avatar stack
@@ -217,31 +255,30 @@ class _ProjectMembersRow extends StatelessWidget {
             height: 28,
             width: (members.length > 4 ? 4 : members.length) * 22.0 + 8,
             child: Stack(
-              children: List.generate(
-                members.length > 4 ? 4 : members.length,
-                (i) {
-                  final u = members[i];
-                  return Positioned(
-                    left: i * 20.0,
+              children: List.generate(members.length > 4 ? 4 : members.length, (
+                i,
+              ) {
+                final u = members[i];
+                return Positioned(
+                  left: i * 20.0,
+                  child: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Colors.white,
                     child: CircleAvatar(
-                      radius: 14,
-                      backgroundColor: Colors.white,
-                      child: CircleAvatar(
-                        radius: 12,
-                        backgroundColor: Colors.indigo.shade50,
-                        child: Text(
-                          u.initials,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.indigo.shade900,
-                          ),
+                      radius: 12,
+                      backgroundColor: Colors.indigo.shade50,
+                      child: Text(
+                        u.initials,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo.shade900,
                         ),
                       ),
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              }),
             ),
           ),
         if (members.length > 4)

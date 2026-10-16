@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/widgets/app_header.dart';
+import '../../auth/data/user_model.dart';
 import '../bloc/user_bloc.dart';
 import '../bloc/user_event.dart';
 import '../bloc/user_state.dart';
@@ -77,10 +78,25 @@ class _UsersViewState extends State<_UsersView> {
             );
           }
           if (state.successMessage != null) {
+            final isUpdate = state.successMessage == 'User updated';
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.successMessage!),
-                backgroundColor: Colors.green,
+                content: Text(
+                  isUpdate
+                      ? 'User updated'
+                      : state.successMessage == 'User created successfully'
+                      ? 'User created'
+                      : state.successMessage!,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                backgroundColor: isUpdate
+                    ? const Color(0xFF3B82F6)
+                    : const Color(0xFF10B981),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
           }
@@ -200,27 +216,57 @@ class _UsersViewState extends State<_UsersView> {
               // ── List ──
               Expanded(
                 child: displayList.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              state.includeInactive
-                                  ? Icons.group_off_outlined
-                                  : Icons.person_off_outlined,
-                              size: 48,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _query.isNotEmpty
-                                  ? 'No users match "$_query"'
-                                  : (state.includeInactive
-                                      ? 'No inactive users'
-                                      : 'No active users'),
-                              style: const TextStyle(color: Colors.grey),
-                            ),
-                          ],
+                    ? RefreshIndicator(
+                        onRefresh: () async {
+                          final includeInactive = context
+                              .read<UserBloc>()
+                              .state
+                              .includeInactive;
+                          context.read<UserBloc>().add(
+                                UsersLoadRequested(
+                                  includeInactive: includeInactive,
+                                ),
+                              );
+                        },
+                        child: LayoutBuilder(
+                          builder: (context, constraints) => ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: constraints.maxHeight,
+                                ),
+                                child: Center(
+                                  child: _UsersEmptyState(
+                                    title: _query.isNotEmpty
+                                        ? 'No users match "$_query"'
+                                        : state.users.isEmpty &&
+                                              !state.includeInactive &&
+                                              state.roleFilter == 'all'
+                                        ? 'No teammates yet'
+                                        : state.includeInactive
+                                        ? 'No inactive users'
+                                        : 'No users match this role',
+                                    subtitle: _query.isNotEmpty
+                                        ? 'Try a different name or email.'
+                                        : state.users.isEmpty &&
+                                              !state.includeInactive &&
+                                              state.roleFilter == 'all'
+                                        ? 'Add your first team member to start assigning tasks.'
+                                        : state.includeInactive
+                                        ? 'There are no inactive teammates to show.'
+                                        : 'Try another role filter to see more teammates.',
+                                    onAdd: _query.isEmpty &&
+                                            state.users.isEmpty &&
+                                            !state.includeInactive &&
+                                            state.roleFilter == 'all'
+                                        ? () => showUserFormSheet(context)
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     : RefreshIndicator(
@@ -263,6 +309,55 @@ class _UsersViewState extends State<_UsersView> {
   }
 }
 
+class _UsersEmptyState extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final VoidCallback? onAdd;
+
+  const _UsersEmptyState({
+    required this.title,
+    required this.subtitle,
+    this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.groups_outlined, size: 56, color: Color(0xFF94A3B8)),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          ),
+          if (onAdd != null) ...[
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.person_add_outlined),
+              label: const Text('Add user'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _FilterChip extends StatelessWidget {
   final String label;
   final String value;
@@ -296,7 +391,7 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _UserTile extends StatelessWidget {
-  final dynamic user;
+  final User user;
   const _UserTile({super.key, required this.user});
 
   Color get _roleColor {
@@ -382,10 +477,53 @@ class _UserTile extends StatelessWidget {
               ],
             ],
           ),
+          const SizedBox(height: 6),
+          _UserWorkloadLine(user: user),
         ],
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => showUserFormSheet(context, existing: user),
+    );
+  }
+}
+
+class _UserWorkloadLine extends StatelessWidget {
+  final User user;
+
+  const _UserWorkloadLine({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    if (user.projectCount == 0) {
+      return const Row(
+        children: [
+          Icon(Icons.folder_outlined, size: 13, color: Color(0xFF94A3B8)),
+          SizedBox(width: 4),
+          Text(
+            'No projects assigned',
+            style: TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        const Icon(Icons.folder_outlined, size: 13, color: Color(0xFF64748B)),
+        const SizedBox(width: 4),
+        Text(
+          '${user.projectCount} ${user.projectCount == 1 ? 'project' : 'projects'}',
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }
