@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../projects/data/models/project.dart';
 import '../../projects/data/project_repository.dart';
 import '../../users/data/user_repository.dart';
@@ -16,10 +17,7 @@ Future<void> showTaskFilterSheet(
 
   final results = await Future.wait([
     projectRepo.listProjects(),
-    if (showAssignee)
-      userRepo.listUsers(isActive: false)
-    else
-      Future.value([]),
+    if (showAssignee) userRepo.listUsers(isActive: true) else Future.value([]),
   ]);
 
   final projects = results[0] as List<Project>;
@@ -124,10 +122,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 16),
 
             // ── Status ──
-            const Text(
-              'Status',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
+            const Text('Status', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
