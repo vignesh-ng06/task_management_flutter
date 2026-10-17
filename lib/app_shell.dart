@@ -65,7 +65,7 @@ void initState() {
         ),
       if (isAdmin)
         const _TabItem(
-          label: 'Users',
+          label: 'Team',
           icon: Icons.people_outline,
           activeIcon: Icons.people,
           screen: UsersScreen(),

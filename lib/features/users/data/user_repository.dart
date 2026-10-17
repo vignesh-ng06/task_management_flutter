@@ -1,5 +1,6 @@
 import '../../../core/api/api_client.dart';
 import '../../auth/data/user_model.dart';
+import 'user_details.dart';
 
 class UserRepository {
   final ApiClient _api;
@@ -14,6 +15,21 @@ Future<List<User>> listUsers({bool isActive = true}) async {
       .map((json) => User.fromJson(Map<String, dynamic>.from(json as Map)))
       .toList();
 }
+
+  Future<UserDetails> getUserDetails(int id) async {
+    final response = await _api.get('/users/getUser/$id');
+    if (response is! Map) {
+      throw const FormatException('Invalid user details response');
+    }
+
+    final responseMap = Map<String, dynamic>.from(response);
+    final data = responseMap['data'];
+    if (data is! Map) {
+      throw const FormatException('User details response is missing data');
+    }
+
+    return UserDetails.fromJson(Map<String, dynamic>.from(data));
+  }
 
   Future<User> createUser({
     required String email,

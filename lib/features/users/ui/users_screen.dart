@@ -7,7 +7,29 @@ import '../bloc/user_bloc.dart';
 import '../bloc/user_event.dart';
 import '../bloc/user_state.dart';
 import '../data/user_repository.dart';
+import 'user_detail_screen.dart';
 import 'user_form_sheet.dart';
+
+// ── Design tokens ──
+const _kPrimary = Color(0xFF4F46E5);
+const _kBg = Color(0xFFF8FAFC);
+const _kBorder = Color(0xFFE2E8F0);
+const _kTextDark = Color(0xFF0F172A);
+const _kTextMuted = Color(0xFF64748B);
+const _kTextLight = Color(0xFF94A3B8);
+const _kSuccess = Color(0xFF10B981);
+const _kInfo = Color(0xFF3B82F6);
+
+Color _roleColor(String role) {
+  switch (role) {
+    case 'admin':
+      return const Color(0xFF7C3AED);
+    case 'manager':
+      return const Color(0xFF2563EB);
+    default:
+      return const Color(0xFF64748B);
+  }
+}
 
 class UsersScreen extends StatelessWidget {
   const UsersScreen({super.key});
@@ -40,26 +62,31 @@ class _UsersViewState extends State<_UsersView> {
     super.dispose();
   }
 
+  void _reload(BuildContext context) {
+    final includeInactive = context.read<UserBloc>().state.includeInactive;
+    context.read<UserBloc>().add(
+      UsersLoadRequested(includeInactive: includeInactive),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _kBg,
       appBar: AppHeader(
         section: 'Users',
         actions: [
           IconButton(
+            tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              final includeInactive =
-                  context.read<UserBloc>().state.includeInactive;
-              context.read<UserBloc>().add(
-                    UsersLoadRequested(includeInactive: includeInactive),
-                  );
-            },
+            onPressed: () => _reload(context),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'users-add-user',
+        backgroundColor: _kPrimary,
+        foregroundColor: Colors.white,
         onPressed: () => showUserFormSheet(context),
         icon: const Icon(Icons.person_add),
         label: const Text('Add user'),
@@ -74,6 +101,10 @@ class _UsersViewState extends State<_UsersView> {
               SnackBar(
                 content: Text(state.error!),
                 backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
           }
@@ -89,9 +120,7 @@ class _UsersViewState extends State<_UsersView> {
                       : state.successMessage!,
                   style: const TextStyle(color: Colors.white),
                 ),
-                backgroundColor: isUpdate
-                    ? const Color(0xFF3B82F6)
-                    : const Color(0xFF10B981),
+                backgroundColor: isUpdate ? _kInfo : _kSuccess,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 2),
                 shape: RoundedRectangleBorder(
@@ -110,15 +139,14 @@ class _UsersViewState extends State<_UsersView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline,
-                      size: 48, color: Colors.grey),
+                  const Icon(Icons.error_outline, size: 48, color: Colors.grey),
                   const SizedBox(height: 12),
                   Text(state.error ?? 'Error'),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () => context
-                        .read<UserBloc>()
-                        .add(const UsersLoadRequested()),
+                    onPressed: () => context.read<UserBloc>().add(
+                      const UsersLoadRequested(),
+                    ),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -135,80 +163,103 @@ class _UsersViewState extends State<_UsersView> {
             return name.contains(q) || email.contains(q);
           }).toList();
 
+          final noUsersAtAll =
+              state.users.isEmpty &&
+              !state.includeInactive &&
+              state.roleFilter == 'all';
+
+          int roleCount(String role) =>
+              state.users.where((u) => u.role == role).length;
+
           return Column(
             children: [
-              // ── Active / Inactive toggle ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(
-                      value: false,
-                      label: Text('Active'),
-                      icon: Icon(Icons.check, size: 16),
-                    ),
-                    ButtonSegment(value: true, label: Text('Inactive')),
-                  ],
-                  selected: {state.includeInactive},
-                  onSelectionChanged: (selection) =>
-                      context.read<UserBloc>().add(
-                            UsersLoadRequested(
-                              includeInactive: selection.single,
-                            ),
+              // ── Control panel (search + toggle + role chips with counts) ──
+              Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: _kBorder)),
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _SearchField(
+                            controller: _searchCtrl,
+                            onChanged: (v) => setState(() => _query = v),
+                            onClear: () {
+                              _searchCtrl.clear();
+                              setState(() => _query = '');
+                            },
+                            showClear: _query.isNotEmpty,
                           ),
-                  style: ButtonStyle(
-                    foregroundColor:
-                        WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return Colors.white;
-                      }
-                      return Colors.black87;
-                    }),
-                    backgroundColor:
-                        WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return const Color(0xFF4F46E5);
-                      }
-                      return Colors.white;
-                    }),
-                    side: WidgetStateProperty.all(
-                      const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        const SizedBox(width: 10),
+                        _StatusToggle(
+                          includeInactive: state.includeInactive,
+                          onChanged: (value) => context.read<UserBloc>().add(
+                            UsersLoadRequested(includeInactive: value),
+                          ),
+                        ),
+                      ],
                     ),
-                    textStyle: WidgetStateProperty.all(
-                      const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600),
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _FilterChip(
+                            label: 'All',
+                            value: 'all',
+                            count: state.users.length,
+                          ),
+                          _FilterChip(
+                            label: 'Admin',
+                            value: 'admin',
+                            count: roleCount('admin'),
+                          ),
+                          _FilterChip(
+                            label: 'Manager',
+                            value: 'manager',
+                            count: roleCount('manager'),
+                          ),
+                          _FilterChip(
+                            label: 'Employee',
+                            value: 'employee',
+                            count: roleCount('employee'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
 
-              // ── Search ──
+              // ── Result count ──
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: TextField(
-                  controller: _searchCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Search by name or email…',
-                    prefixIcon: Icon(Icons.search, size: 20),
-                    isDense: true,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                  onChanged: (v) => setState(() => _query = v),
-                ),
-              ),
-
-              // ── Role filter chips ──
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
                 child: Row(
-                  children: const [
-                    _FilterChip(label: 'All', value: 'all'),
-                    _FilterChip(label: 'Admin', value: 'admin'),
-                    _FilterChip(label: 'Manager', value: 'manager'),
-                    _FilterChip(label: 'Employee', value: 'employee'),
+                  children: [
+                    Text(
+                      '${displayList.length} ${displayList.length == 1 ? 'member' : 'members'}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _kTextMuted,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      state.includeInactive ? 'Inactive' : 'Active',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _kTextLight,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -217,17 +268,7 @@ class _UsersViewState extends State<_UsersView> {
               Expanded(
                 child: displayList.isEmpty
                     ? RefreshIndicator(
-                        onRefresh: () async {
-                          final includeInactive = context
-                              .read<UserBloc>()
-                              .state
-                              .includeInactive;
-                          context.read<UserBloc>().add(
-                                UsersLoadRequested(
-                                  includeInactive: includeInactive,
-                                ),
-                              );
-                        },
+                        onRefresh: () async => _reload(context),
                         child: LayoutBuilder(
                           builder: (context, constraints) => ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
@@ -240,26 +281,19 @@ class _UsersViewState extends State<_UsersView> {
                                   child: _UsersEmptyState(
                                     title: _query.isNotEmpty
                                         ? 'No users match "$_query"'
-                                        : state.users.isEmpty &&
-                                              !state.includeInactive &&
-                                              state.roleFilter == 'all'
+                                        : noUsersAtAll
                                         ? 'No teammates yet'
                                         : state.includeInactive
                                         ? 'No inactive users'
                                         : 'No users match this role',
                                     subtitle: _query.isNotEmpty
                                         ? 'Try a different name or email.'
-                                        : state.users.isEmpty &&
-                                              !state.includeInactive &&
-                                              state.roleFilter == 'all'
+                                        : noUsersAtAll
                                         ? 'Add your first team member to start assigning tasks.'
                                         : state.includeInactive
                                         ? 'There are no inactive teammates to show.'
                                         : 'Try another role filter to see more teammates.',
-                                    onAdd: _query.isEmpty &&
-                                            state.users.isEmpty &&
-                                            !state.includeInactive &&
-                                            state.roleFilter == 'all'
+                                    onAdd: _query.isEmpty && noUsersAtAll
                                         ? () => showUserFormSheet(context)
                                         : null,
                                   ),
@@ -271,27 +305,20 @@ class _UsersViewState extends State<_UsersView> {
                       )
                     : RefreshIndicator(
                         onRefresh: () async {
-                          final includeInactive = context
-                              .read<UserBloc>()
-                              .state
-                              .includeInactive;
-                          context.read<UserBloc>().add(
-                                UsersLoadRequested(
-                                  includeInactive: includeInactive,
-                                ),
-                              );
+                          _reload(context);
                           await Future.delayed(
                             const Duration(milliseconds: 500),
                           );
                         },
                         child: ListView.separated(
-                          padding: const EdgeInsets.only(bottom: 80),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
                           itemCount: displayList.length,
                           separatorBuilder: (_, _) =>
-                              const Divider(height: 1, indent: 72),
+                              const SizedBox(height: 10),
                           itemBuilder: (_, i) {
                             final user = displayList[i];
-                            return _UserTile(
+                            return _UserCard(
                               key: ValueKey(
                                 'user-${user.id}-${user.name}-${user.role}-${user.isActive}',
                               ),
@@ -309,6 +336,358 @@ class _UsersViewState extends State<_UsersView> {
   }
 }
 
+// ─────────────────────────────────────────────
+// Search + status toggle
+// ─────────────────────────────────────────────
+class _SearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+  final bool showClear;
+
+  const _SearchField({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+    required this.showClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        style: const TextStyle(fontSize: 14, color: _kTextDark),
+        decoration: InputDecoration(
+          hintText: 'Search name or email',
+          hintStyle: const TextStyle(fontSize: 13, color: _kTextLight),
+          prefixIcon: const Icon(Icons.search, size: 20, color: _kTextLight),
+          suffixIcon: showClear
+              ? IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  color: _kTextLight,
+                  onPressed: onClear,
+                )
+              : null,
+          filled: true,
+          fillColor: _kBg,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _kBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _kBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _kPrimary, width: 1.4),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusToggle extends StatelessWidget {
+  final bool includeInactive;
+  final ValueChanged<bool> onChanged;
+
+  const _StatusToggle({required this.includeInactive, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget seg(String label, bool value) {
+      final selected = includeInactive == value;
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (!selected) onChanged(value);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: selected ? _kPrimary : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : _kTextMuted,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: _kBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [seg('Active', false), seg('Inactive', true)],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// Role filter chips
+// ─────────────────────────────────────────────
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final int count;
+  const _FilterChip({
+    required this.label,
+    required this.value,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final current = context.watch<UserBloc>().state.roleFilter;
+    final selected = current == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : _kTextMuted,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: selected
+                    ? Colors.white.withValues(alpha: 0.25)
+                    : _kBorder,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : _kTextMuted,
+                ),
+              ),
+            ),
+          ],
+        ),
+        selected: selected,
+        selectedColor: _kPrimary,
+        backgroundColor: Colors.white,
+        side: BorderSide(color: selected ? _kPrimary : _kBorder),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        showCheckmark: false,
+        visualDensity: VisualDensity.compact,
+        onSelected: (_) =>
+            context.read<UserBloc>().add(UserFilterChanged(value)),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// User card
+// ─────────────────────────────────────────────
+class _UserCard extends StatelessWidget {
+  final User user;
+  const _UserCard({super.key, required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final inactive = user.isActive == false;
+    final color = _roleColor(user.role);
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => BlocProvider.value(
+              value: context.read<UserBloc>(),
+              child: UserDetailScreen(user: user),
+            ),
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _kBorder),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Avatar with status dot
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: inactive
+                        ? Colors.grey.shade200
+                        : color.withValues(alpha: 0.12),
+                    child: Text(
+                      user.initials,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: inactive ? Colors.grey : color,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: -1,
+                    bottom: -1,
+                    child: Container(
+                      width: 13,
+                      height: 13,
+                      decoration: BoxDecoration(
+                        color: inactive ? _kTextLight : _kSuccess,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 14),
+
+              // Name, email, badges
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: inactive ? _kTextLight : _kTextDark,
+                        decoration: inactive
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      user.email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, color: _kTextMuted),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _Badge(
+                          label: user.role.toUpperCase(),
+                          color: color,
+                        ),
+                        if (inactive)
+                          const _Badge(label: 'INACTIVE', color: Colors.red),
+                        _ProjectsBadge(count: user.projectCount),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const Icon(Icons.chevron_right, color: _kTextLight),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _Badge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProjectsBadge extends StatelessWidget {
+  final int count;
+  const _ProjectsBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final empty = count == 0;
+    final color = empty ? _kTextLight : _kTextMuted;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.folder_outlined, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(
+          empty
+              ? 'No projects'
+              : '$count ${count == 1 ? 'project' : 'projects'}',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// Empty state
+// ─────────────────────────────────────────────
 class _UsersEmptyState extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -327,26 +706,39 @@ class _UsersEmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.groups_outlined, size: 56, color: Color(0xFF94A3B8)),
-          const SizedBox(height: 16),
+          Container(
+            width: 84,
+            height: 84,
+            decoration: BoxDecoration(
+              color: _kPrimary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.groups_outlined,
+              size: 40,
+              color: _kPrimary,
+            ),
+          ),
+          const SizedBox(height: 18),
           Text(
             title,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF0F172A),
+              fontWeight: FontWeight.w700,
+              color: _kTextDark,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            style: const TextStyle(fontSize: 13, color: _kTextMuted),
           ),
           if (onAdd != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: _kPrimary),
               onPressed: onAdd,
               icon: const Icon(Icons.person_add_outlined),
               label: const Text('Add user'),
@@ -354,176 +746,6 @@ class _UsersEmptyState extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final String value;
-  const _FilterChip({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final current = context.watch<UserBloc>().state.roleFilter;
-    final selected = current == value;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : Colors.black87,
-          ),
-        ),
-        selected: selected,
-        selectedColor: const Color(0xFF4F46E5),
-        backgroundColor: Colors.white,
-        side: const BorderSide(color: Color(0xFFE2E8F0)),
-        showCheckmark: false,
-        onSelected: (_) =>
-            context.read<UserBloc>().add(UserFilterChanged(value)),
-      ),
-    );
-  }
-}
-
-class _UserTile extends StatelessWidget {
-  final User user;
-  const _UserTile({super.key, required this.user});
-
-  Color get _roleColor {
-    switch (user.role) {
-      case 'admin':
-        return Colors.purple;
-      case 'manager':
-        return Colors.blue;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final inactive = user.isActive == false;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: CircleAvatar(
-        backgroundColor:
-            inactive ? Colors.grey.shade300 : _roleColor.withValues(alpha: 0.15),
-        child: Text(
-          user.initials,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: inactive ? Colors.grey : _roleColor,
-          ),
-        ),
-      ),
-      title: Text(
-        user.displayName,
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: inactive ? Colors.grey : null,
-          decoration: inactive ? TextDecoration.lineThrough : null,
-        ),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 2),
-          Text(
-            user.email,
-            style: TextStyle(color: Colors.grey[600], fontSize: 12),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: _roleColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  user.role.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: _roleColor,
-                  ),
-                ),
-              ),
-              if (inactive) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'INACTIVE',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 6),
-          _UserWorkloadLine(user: user),
-        ],
-      ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => showUserFormSheet(context, existing: user),
-    );
-  }
-}
-
-class _UserWorkloadLine extends StatelessWidget {
-  final User user;
-
-  const _UserWorkloadLine({required this.user});
-
-  @override
-  Widget build(BuildContext context) {
-    if (user.projectCount == 0) {
-      return const Row(
-        children: [
-          Icon(Icons.folder_outlined, size: 13, color: Color(0xFF94A3B8)),
-          SizedBox(width: 4),
-          Text(
-            'No projects assigned',
-            style: TextStyle(
-              color: Color(0xFF94A3B8),
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        const Icon(Icons.folder_outlined, size: 13, color: Color(0xFF64748B)),
-        const SizedBox(width: 4),
-        Text(
-          '${user.projectCount} ${user.projectCount == 1 ? 'project' : 'projects'}',
-          style: const TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }
