@@ -110,6 +110,7 @@ class _TaskBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final createdAt = task.createdAt.toLocal();
     final localizations = MaterialLocalizations.of(context);
 
@@ -133,7 +134,12 @@ class _TaskBody extends StatelessWidget {
                 if (task.description != null && task.description!.isNotEmpty)
                   Text(
                     task.description!,
-                    style: TextStyle(fontSize: 15, color: Colors.grey[700]),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? colors.onSurfaceVariant
+                          : Colors.grey[700],
+                    ),
                   ),
                 const SizedBox(height: 24),
 
@@ -299,6 +305,7 @@ class _CommentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final canEdit = _canEdit(context);
     final canDelete = _canDelete(context);
     final hasActions = canEdit || canDelete;
@@ -307,7 +314,9 @@ class _CommentTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: Theme.of(context).brightness == Brightness.dark
+            ? colors.surfaceContainerLow
+            : Colors.grey[100],
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -369,7 +378,12 @@ class _CommentTile extends StatelessWidget {
                     Text(
                       _relativeTime(comment.createdAt) +
                           (comment.wasEdited ? ' · edited' : ''),
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? colors.onSurfaceVariant
+                            : Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
@@ -527,13 +541,22 @@ class _CommentInputState extends State<_CommentInput> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return SafeArea(
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Colors.grey.shade300)),
+          color: Theme.of(context).brightness == Brightness.dark
+              ? colors.surface
+              : Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? colors.outlineVariant
+                  : Colors.grey.shade300,
+            ),
+          ),
         ),
         child: Row(
           children: [
@@ -563,7 +586,7 @@ class _CommentInputState extends State<_CommentInput> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.send),
-              color: Colors.blue,
+              color: colors.primary,
             ),
           ],
         ),
@@ -579,6 +602,7 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -587,7 +611,9 @@ class _Section extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: Colors.grey[600],
+            color: Theme.of(context).brightness == Brightness.dark
+                ? colors.onSurfaceVariant
+                : Colors.grey[600],
             letterSpacing: 0.8,
           ),
         ),

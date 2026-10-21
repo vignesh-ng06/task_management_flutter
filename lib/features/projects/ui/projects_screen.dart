@@ -42,16 +42,7 @@ class _ProjectsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppHeader(
-        section: 'Projects',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () =>
-                context.read<ProjectBloc>().add(const ProjectsLoadRequested()),
-          ),
-        ],
-      ),
+      appBar: AppHeader(section: 'Projects'),
       floatingActionButton: _canManage(context)
           ? FloatingActionButton.extended(
               heroTag: 'projects-new-project',
@@ -138,15 +129,24 @@ class _ProjectsView extends StatelessWidget {
                     hasScrollBody: false,
                     child: Center(
                       child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerLow
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.outlineVariant
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
                         margin: const EdgeInsets.all(24),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
                           vertical: 32,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -157,22 +157,32 @@ class _ProjectsView extends StatelessWidget {
                               color: Color(0xFF94A3B8),
                             ),
                             const SizedBox(height: 16),
-                            const Text(
+                            Text(
                               'No projects yet',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF0F172A),
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Theme.of(context).colorScheme.onSurface
+                                    : const Color(0xFF0F172A),
                               ),
                             ),
                             const SizedBox(height: 6),
-                            const Text(
+                            Text(
                               'Projects group related tasks together.\nStart with one — like "Marketing Q4".',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF64748B),
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                    : const Color(0xFF64748B),
                               ),
                             ),
                             if (_canManage(context)) ...[
@@ -311,8 +321,10 @@ class _ProjectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: Colors.white,
+      color: isDark ? colors.surfaceContainerLow : Colors.white,
       elevation: 1,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
@@ -349,7 +361,10 @@ class _ProjectCard extends StatelessWidget {
                   project.description!,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? colors.onSurfaceVariant : Colors.grey[600],
+                  ),
                 ),
               const Spacer(),
               Row(
@@ -364,14 +379,21 @@ class _ProjectCard extends StatelessWidget {
                     '${project.taskCount} tasks',
                     style: TextStyle(
                       fontSize: 11,
-                      color: Colors.grey[700],
+                      color: isDark
+                          ? colors.onSurfaceVariant
+                          : Colors.grey[700],
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const Spacer(),
                   Text(
                     project.createdDateLabel,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark
+                          ? colors.onSurfaceVariant
+                          : Colors.grey[500],
+                    ),
                   ),
                 ],
               ),

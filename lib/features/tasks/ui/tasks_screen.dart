@@ -35,173 +35,167 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   @override
-Widget build(BuildContext context) {
-  return BlocListener<TaskBloc, TaskState>(
-    listener: (context, state) {
-      if (state.filters.search.isEmpty && _searchCtrl.text.isNotEmpty) {
-        _searchCtrl.clear();
-      } else if (state.filters.search != _searchCtrl.text &&
-          state.filters.search.isNotEmpty) {
-        _searchCtrl.text = state.filters.search;
-      }
-    },
-    child: Scaffold(
-      appBar: AppHeader(
-        section: 'Tasks',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () =>
-                context.read<TaskBloc>().add(const TasksLoadRequested()),
-          ),
-        ],
-      ),
-      floatingActionButton: _canManage(context)
-          ? FloatingActionButton.extended(
-              heroTag: 'tasks-new-task',
-              onPressed: () => _openTaskForm(context),
-              icon: const Icon(Icons.add),
-              label: const Text('New task'),
-            )
-          : null,
-      body: BlocConsumer<TaskBloc, TaskState>(
-        listenWhen: (previous, state) =>
-            (previous.error != state.error &&
-                state.error != null &&
-                state.mutationStatus != TaskMutationStatus.failed),
-        listener: (context, state) {
-          if (state.error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.error!),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        },
-        builder: (context, state) {
-          final canManage = _canManage(context);
+  Widget build(BuildContext context) {
+    return BlocListener<TaskBloc, TaskState>(
+      listener: (context, state) {
+        if (state.filters.search.isEmpty && _searchCtrl.text.isNotEmpty) {
+          _searchCtrl.clear();
+        } else if (state.filters.search != _searchCtrl.text &&
+            state.filters.search.isNotEmpty) {
+          _searchCtrl.text = state.filters.search;
+        }
+      },
+      child: Scaffold(
+        appBar: AppHeader(section: 'Tasks'),
+        floatingActionButton: _canManage(context)
+            ? FloatingActionButton.extended(
+                heroTag: 'tasks-new-task',
+                onPressed: () => _openTaskForm(context),
+                icon: const Icon(Icons.add),
+                label: const Text('New task'),
+              )
+            : null,
+        body: BlocConsumer<TaskBloc, TaskState>(
+          listenWhen: (previous, state) =>
+              (previous.error != state.error &&
+              state.error != null &&
+              state.mutationStatus != TaskMutationStatus.failed),
+          listener: (context, state) {
+            if (state.error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.error!),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+          builder: (context, state) {
+            final canManage = _canManage(context);
 
-          return Column(
-            children: [
-              // ── Mode toggle (admin/manager only) ──
-              if (canManage)
+            return Column(
+              children: [
+                // ── Mode toggle (admin/manager only) ──
+                if (canManage)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: SegmentedButton<TaskMode>(
+                      segments: const [
+                        ButtonSegment(
+                          value: TaskMode.mine,
+                          label: Text('My Tasks'),
+                          icon: Icon(Icons.person_outline, size: 16),
+                        ),
+                        ButtonSegment(
+                          value: TaskMode.all,
+                          label: Text('All Tasks'),
+                          icon: Icon(Icons.groups_outlined, size: 16),
+                        ),
+                      ],
+                      selected: {state.mode},
+                      onSelectionChanged: (s) => context.read<TaskBloc>().add(
+                        TaskModeChanged(s.first),
+                      ),
+                    ),
+                  ),
+
+                // ── Search + Filters bar (always visible) ──
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: SegmentedButton<TaskMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: TaskMode.mine,
-                        label: Text('My Tasks'),
-                        icon: Icon(Icons.person_outline, size: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchCtrl,
+                          decoration: const InputDecoration(
+                            hintText: 'Search tasks…',
+                            prefixIcon: Icon(Icons.search, size: 20),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                          ),
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (v) {
+                            final newFilters = state.filters.copyWith(
+                              search: v.trim(),
+                            );
+                            context.read<TaskBloc>().add(
+                              TaskFiltersChanged(newFilters),
+                            );
+                          },
+                        ),
                       ),
-                      ButtonSegment(
-                        value: TaskMode.all,
-                        label: Text('All Tasks'),
-                        icon: Icon(Icons.groups_outlined, size: 16),
+                      const SizedBox(width: 8),
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton.filledTonal(
+                            onPressed: () => showTaskFilterSheet(
+                              context,
+                              showAssignee:
+                                  canManage && state.mode == TaskMode.all,
+                            ),
+                            icon: const Icon(Icons.tune, size: 20),
+                            tooltip: 'Filters',
+                          ),
+                          if (!state.filters.isEmpty)
+                            Positioned(
+                              right: 2,
+                              top: 2,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 14,
+                                  minHeight: 14,
+                                ),
+                                child: Text(
+                                  '${_activeCount(state.filters)}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ],
-                    selected: {state.mode},
-                    onSelectionChanged: (s) => context
-                        .read<TaskBloc>()
-                        .add(TaskModeChanged(s.first)),
                   ),
                 ),
 
-              // ── Search + Filters bar (always visible) ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchCtrl,
-                        decoration: const InputDecoration(
-                          hintText: 'Search tasks…',
-                          prefixIcon: Icon(Icons.search, size: 20),
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                        ),
-                        textInputAction: TextInputAction.search,
-                        onSubmitted: (v) {
-                          final newFilters =
-                              state.filters.copyWith(search: v.trim());
-                          context
-                              .read<TaskBloc>()
-                              .add(TaskFiltersChanged(newFilters));
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        IconButton.filledTonal(
-                          onPressed: () => showTaskFilterSheet(context, showAssignee: canManage && state.mode == TaskMode.all),
-                          icon: const Icon(Icons.tune, size: 20),
-                          tooltip: 'Filters',
-                        ),
-                        if (!state.filters.isEmpty)
-                          Positioned(
-                            right: 2,
-                            top: 2,
-                            child: Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 14,
-                                minHeight: 14,
-                              ),
-                              child: Text(
-                                '${_activeCount(state.filters)}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                const SizedBox(height: 8),
 
-              const SizedBox(height: 8),
-
-              // ── Body ──
-              Expanded(
-                child: _buildBody(context, state, canManage),
-              ),
-            ],
-          );
-        },
+                // ── Body ──
+                Expanded(child: _buildBody(context, state, canManage)),
+              ],
+            );
+          },
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
-  final saved = await showTaskFormSheet(context, existing: existing);
-  if (!context.mounted || !saved) return;
+  Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
+    final saved = await showTaskFormSheet(context, existing: existing);
+    if (!context.mounted || !saved) return;
 
-  context.read<TaskBloc>().add(const TasksRefreshRequested());
-  showSuccessSnackBar(
-    context,
-    existing == null ? 'Task created' : 'Task updated',
-    backgroundColor: existing == null
-        ? const Color(0xFF10B981)
-        : const Color(0xFF3B82F6),
-  );
-}
+    context.read<TaskBloc>().add(const TasksRefreshRequested());
+    showSuccessSnackBar(
+      context,
+      existing == null ? 'Task created' : 'Task updated',
+      backgroundColor: existing == null
+          ? const Color(0xFF10B981)
+          : const Color(0xFF3B82F6),
+    );
+  }
 
   int _activeCount(TaskFilters f) {
     int c = 0;
@@ -256,9 +250,15 @@ Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
                     vertical: 32,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.surfaceContainerLow
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Theme.of(context).colorScheme.outlineVariant
+                          : const Color(0xFFE2E8F0),
+                    ),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -276,10 +276,10 @@ Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
                             ? "You're all caught up"
                             : 'No tasks in your company yet',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF0F172A),
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -288,9 +288,9 @@ Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
                             ? 'When someone assigns you a task,\nit will show up here.'
                             : 'Create your first task to get started.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: Color(0xFF64748B),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       if (state.mode == TaskMode.all && canManage) ...[
@@ -324,7 +324,8 @@ Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
           final taskBloc = context.read<TaskBloc>();
           return TaskCard(
             key: ValueKey(
-                'task-${task.id}-${task.status}-${task.priority}-${task.title}'),
+              'task-${task.id}-${task.status}-${task.priority}-${task.title}',
+            ),
             task: task,
             showAssignee: state.mode == TaskMode.all,
             onTap: () async {
@@ -357,7 +358,9 @@ Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
               child: Text(
                 task.title,
                 style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -373,13 +376,13 @@ Future<void> _openTaskForm(BuildContext context, {Task? existing}) async {
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text('Delete task',
-                  style: TextStyle(color: Colors.red)),
+              title: const Text(
+                'Delete task',
+                style: TextStyle(color: Colors.red),
+              ),
               onTap: () {
                 Navigator.pop(sheetCtx);
-                context
-                    .read<TaskBloc>()
-                    .add(TaskDeleteRequested(task.id));
+                context.read<TaskBloc>().add(TaskDeleteRequested(task.id));
               },
             ),
           ],

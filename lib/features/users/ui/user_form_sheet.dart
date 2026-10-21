@@ -124,6 +124,7 @@ class _UserFormSheetState extends State<_UserFormSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final inactive = isEdit && widget.existing!.isActive == false;
+    final colors = Theme.of(context).colorScheme;
 
     return Container(
       padding: EdgeInsets.only(
@@ -132,9 +133,9 @@ class _UserFormSheetState extends State<_UserFormSheet> {
         top: 20,
         bottom: 20 + bottomInset,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: BlocListener<UserBloc, UserState>(
         listenWhen: (previous, current) =>
@@ -159,7 +160,7 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: colors.outlineVariant,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -167,9 +168,10 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                 const SizedBox(height: 16),
                 Text(
                   isEdit ? 'Edit user' : 'Create user',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
+                    color: colors.onSurface,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -177,6 +179,7 @@ class _UserFormSheetState extends State<_UserFormSheet> {
                 TextFormField(
                   controller: _emailCtrl,
                   enabled: !isEdit, // email cannot be changed
+                  style: TextStyle(color: colors.onSurface),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
                     final email = value?.trim() ?? '';
@@ -198,6 +201,7 @@ class _UserFormSheetState extends State<_UserFormSheet> {
 
                 TextFormField(
                   controller: _nameCtrl,
+                  style: TextStyle(color: colors.onSurface),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Enter a name';
@@ -232,6 +236,7 @@ class _UserFormSheetState extends State<_UserFormSheet> {
 
                 TextFormField(
                   controller: _passwordCtrl,
+                  style: TextStyle(color: colors.onSurface),
                   obscureText: true,
                   validator: (value) {
                     final password = value ?? '';

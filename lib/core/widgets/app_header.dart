@@ -3,16 +3,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/data/user_model.dart';
+import '../../features/notifications/bloc/notification_bloc.dart';
+import '../../features/notifications/bloc/notification_state.dart';
 import '../theme/app_colors.dart';
 
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final String section;
   final List<Widget> actions;
+  final bool showNotificationsAction;
 
   const AppHeader({
     super.key,
     required this.section,
     this.actions = const [],
+    this.showNotificationsAction = true,
   });
 
   @override
@@ -21,6 +25,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthBloc>().state.user;
+    final colors = Theme.of(context).colorScheme;
 
     return AppBar(
       titleSpacing: 20,
@@ -48,12 +53,12 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'TaskFlow',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: colors.onSurface,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.35,
@@ -63,8 +68,8 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                   section,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -76,6 +81,21 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         ...actions,
+        if (user != null && showNotificationsAction)
+          BlocBuilder<NotificationBloc, NotificationState>(
+            builder: (context, state) => IconButton(
+              tooltip: 'Alerts',
+              onPressed: () =>
+                  Navigator.of(context).pushNamed('/notifications'),
+              icon: Badge(
+                isLabelVisible: state.unreadCount > 0,
+                label: Text(
+                  state.unreadCount > 99 ? '99+' : '${state.unreadCount}',
+                ),
+                child: const Icon(Icons.notifications_outlined),
+              ),
+            ),
+          ),
         if (user != null)
           Padding(
             padding: const EdgeInsets.only(left: 4, right: 12),
@@ -84,12 +104,12 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
               onPressed: () => _showAccount(context, user),
               style: IconButton.styleFrom(
                 padding: const EdgeInsets.all(3),
-                backgroundColor: AppColors.primaryLight,
+                backgroundColor: colors.primaryContainer,
               ),
               icon: CircleAvatar(
                 radius: 18,
-                backgroundColor: AppColors.primaryLight,
-                foregroundColor: AppColors.primaryDark,
+                backgroundColor: colors.primaryContainer,
+                foregroundColor: colors.onPrimaryContainer,
                 child: Text(
                   user.initials,
                   style: const TextStyle(
@@ -128,17 +148,15 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             Text(
               user.displayName,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
             Text(
               user.email,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 10),
             Chip(

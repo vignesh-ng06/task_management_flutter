@@ -68,6 +68,7 @@ class _CompanyEditSheetState extends State<_CompanyEditSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final colors = Theme.of(context).colorScheme;
 
     return BlocListener<AuthBloc, AuthState>(
       listenWhen: (previous, current) =>
@@ -102,9 +103,9 @@ class _CompanyEditSheetState extends State<_CompanyEditSheet> {
           top: 20,
           bottom: 20 + bottomInset,
         ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Form(
           key: _formKey,
@@ -118,7 +119,7 @@ class _CompanyEditSheetState extends State<_CompanyEditSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: colors.outlineVariant,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -132,6 +133,7 @@ class _CompanyEditSheetState extends State<_CompanyEditSheet> {
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: _nameController,
+                  style: TextStyle(color: colors.onSurface),
                   decoration: const InputDecoration(
                     labelText: 'Company name',
                     border: OutlineInputBorder(),
@@ -143,6 +145,7 @@ class _CompanyEditSheetState extends State<_CompanyEditSheet> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _industryController,
+                  style: TextStyle(color: colors.onSurface),
                   decoration: const InputDecoration(
                     labelText: 'Industry',
                     border: OutlineInputBorder(),
@@ -151,6 +154,7 @@ class _CompanyEditSheetState extends State<_CompanyEditSheet> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _websiteController,
+                  style: TextStyle(color: colors.onSurface),
                   keyboardType: TextInputType.url,
                   decoration: const InputDecoration(
                     labelText: 'Website',
@@ -160,6 +164,7 @@ class _CompanyEditSheetState extends State<_CompanyEditSheet> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _companySizeController,
+                  style: TextStyle(color: colors.onSurface),
                   decoration: const InputDecoration(
                     labelText: 'Company size',
                     border: OutlineInputBorder(),

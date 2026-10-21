@@ -78,6 +78,8 @@ class _FilterSheetState extends State<_FilterSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: EdgeInsets.only(
@@ -86,9 +88,9 @@ class _FilterSheetState extends State<_FilterSheet> {
         top: 20,
         bottom: 20 + bottomInset,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: isDark ? colors.surface : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -100,7 +102,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: isDark ? colors.outlineVariant : Colors.grey[300],
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -135,13 +137,23 @@ class _FilterSheetState extends State<_FilterSheet> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : Colors.black87,
+                      color: selected
+                          ? Colors.white
+                          : isDark
+                          ? colors.onSurface
+                          : Colors.black87,
                     ),
                   ),
                   selected: selected,
                   selectedColor: const Color(0xFF4F46E5),
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  backgroundColor: isDark
+                      ? colors.surfaceContainerLow
+                      : Colors.white,
+                  side: BorderSide(
+                    color: isDark
+                        ? colors.outlineVariant
+                        : const Color(0xFFE2E8F0),
+                  ),
                   showCheckmark: false,
                   onSelected: (sel) {
                     setState(() {
@@ -172,13 +184,23 @@ class _FilterSheetState extends State<_FilterSheet> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : Colors.black87,
+                      color: selected
+                          ? Colors.white
+                          : isDark
+                          ? colors.onSurface
+                          : Colors.black87,
                     ),
                   ),
                   selected: selected,
                   selectedColor: const Color(0xFF4F46E5),
-                  backgroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFFE2E8F0)),
+                  backgroundColor: isDark
+                      ? colors.surfaceContainerLow
+                      : Colors.white,
+                  side: BorderSide(
+                    color: isDark
+                        ? colors.outlineVariant
+                        : const Color(0xFFE2E8F0),
+                  ),
                   showCheckmark: false,
                   onSelected: (sel) {
                     setState(() {

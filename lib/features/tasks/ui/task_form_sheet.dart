@@ -148,8 +148,8 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
             .compareTo(roleOrder[b.role] ?? roleOrder.length);
         if (roleComparison != 0) return roleComparison;
         return a.displayName.toLowerCase().compareTo(
-              b.displayName.toLowerCase(),
-            );
+          b.displayName.toLowerCase(),
+        );
       });
 
       setState(() {
@@ -263,9 +263,11 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
           top: 20,
           bottom: 20 + bottomInset,
         ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Theme.of(context).colorScheme.surface
+              : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -479,10 +481,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
           border: OutlineInputBorder(),
           helperText: 'No members in this project yet',
         ),
-        child: const Text(
-          'Unassigned',
-          style: TextStyle(color: Colors.grey),
-        ),
+        child: const Text('Unassigned', style: TextStyle(color: Colors.grey)),
       );
     }
 

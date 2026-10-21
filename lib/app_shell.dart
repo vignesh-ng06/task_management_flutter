@@ -3,9 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/home/ui/home_screen.dart';
-import 'features/notifications/bloc/notification_bloc.dart';
-import 'features/notifications/bloc/notification_state.dart';
-import 'features/notifications/ui/notification_screen.dart';
 import 'features/profile/ui/profile_screen.dart';
 import 'features/projects/ui/projects_screen.dart';
 import 'features/tasks/ui/tasks_screen.dart';
@@ -22,15 +19,15 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
   @override
-void initState() {
-  super.initState();
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    final user = context.read<AuthBloc>().state.user;
-    if (user != null) {
-      context.read<TaskBloc>().setCurrentUserId(user.id);
-    }
-  });
-}
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthBloc>().state.user;
+      if (user != null) {
+        context.read<TaskBloc>().setCurrentUserId(user.id);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,12 +68,6 @@ void initState() {
           screen: UsersScreen(),
         ),
       _TabItem(
-        label: 'Alerts',
-        icon: Icons.notifications_outlined,
-        activeIcon: Icons.notifications,
-        screen: const NotificationScreen(),
-      ),
-      _TabItem(
         label: 'Profile',
         icon: Icons.person_outline,
         activeIcon: Icons.person,
@@ -98,36 +89,13 @@ void initState() {
         destinations: tabs
             .map(
               (t) => NavigationDestination(
-                icon: t.label == 'Alerts'
-                    ? _AlertsIcon(icon: t.icon)
-                    : Icon(t.icon),
-                selectedIcon: t.label == 'Alerts'
-                    ? _AlertsIcon(icon: t.activeIcon)
-                    : Icon(t.activeIcon),
+                icon: Icon(t.icon),
+                selectedIcon: Icon(t.activeIcon),
                 label: t.label,
               ),
             )
             .toList(),
       ),
-    );
-  }
-}
-
-class _AlertsIcon extends StatelessWidget {
-  final IconData icon;
-
-  const _AlertsIcon({required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<NotificationBloc, NotificationState>(
-      builder: (context, state) {
-        return Badge(
-          isLabelVisible: state.unreadCount > 0,
-          label: Text(state.unreadCount > 99 ? '99+' : '${state.unreadCount}'),
-          child: Icon(icon),
-        );
-      },
     );
   }
 }

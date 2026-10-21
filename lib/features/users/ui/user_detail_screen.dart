@@ -12,6 +12,29 @@ import '../data/user_details.dart';
 import '../data/user_repository.dart';
 import 'user_form_sheet.dart';
 
+bool _isDarkMode(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
+
+Color _userCardColor(BuildContext context) => _isDarkMode(context)
+    ? Theme.of(context).colorScheme.surfaceContainerLow
+    : Colors.white;
+
+Color _userBorderColor(BuildContext context) => _isDarkMode(context)
+    ? Theme.of(context).colorScheme.outlineVariant
+    : const Color(0xFFE2E8F0);
+
+Color _userTextColor(BuildContext context) => _isDarkMode(context)
+    ? Theme.of(context).colorScheme.onSurface
+    : const Color(0xFF0F172A);
+
+Color _userMutedColor(BuildContext context) => _isDarkMode(context)
+    ? Theme.of(context).colorScheme.onSurfaceVariant
+    : const Color(0xFF64748B);
+
+Color _userAccentColor(BuildContext context) => _isDarkMode(context)
+    ? Theme.of(context).colorScheme.primary
+    : const Color(0xFF4F46E5);
+
 class UserDetailScreen extends StatefulWidget {
   final User user;
 
@@ -85,11 +108,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                     showUserFormSheet(context, existing: displayedUser),
                 icon: const Icon(Icons.edit_outlined),
               ),
-              IconButton(
-                tooltip: 'Refresh user details',
-                onPressed: _refresh,
-                icon: const Icon(Icons.refresh),
-              ),
             ],
           ),
           body: FutureBuilder<UserDetails>(
@@ -122,7 +140,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                         Text(
                           '${snapshot.error}',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Color(0xFF64748B)),
+                          style: TextStyle(color: _userMutedColor(context)),
                         ),
                         const SizedBox(height: 16),
                         FilledButton.icon(
@@ -330,9 +348,9 @@ class _OverviewMetric extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _userCardColor(context),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: _userBorderColor(context)),
         ),
         child: Column(
           children: [
@@ -340,18 +358,18 @@ class _OverviewMetric extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               '$value',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
+                color: _userTextColor(context),
               ),
             ),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF64748B),
+                color: _userMutedColor(context),
               ),
             ),
           ],
@@ -378,11 +396,11 @@ class _ProjectsCard extends StatelessWidget {
       title: 'Projects · $projectCount',
       children: [
         if (projects.isEmpty && projectsCreated.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               'No projects assigned',
-              style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 13, color: _userMutedColor(context)),
             ),
           ),
         ...projects.map(
@@ -422,9 +440,9 @@ class _ProjectDetailRow extends StatelessWidget {
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         dense: true,
-        leading: const Icon(
+        leading: Icon(
           Icons.folder_open_outlined,
-          color: Color(0xFF64748B),
+          color: _userMutedColor(context),
         ),
         title: Text(name),
         subtitle: Text(label),
@@ -470,19 +488,19 @@ class _AssignedTasksSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _userCardColor(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: _userBorderColor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Assigned tasks',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
+              color: _userTextColor(context),
             ),
           ),
           const SizedBox(height: 10),
@@ -517,7 +535,7 @@ class _AssignedTasksSection extends StatelessWidget {
                       : filter == _AssignedTaskFilter.overdue
                       ? 'No overdue tasks'
                       : 'No open tasks',
-                  style: const TextStyle(color: Color(0xFF64748B)),
+                  style: TextStyle(color: _userMutedColor(context)),
                 ),
               ),
             )
@@ -545,19 +563,23 @@ class _TaskFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = _isDarkMode(context);
     return ChoiceChip(
       label: Text(label),
       selected: selected,
       onSelected: (_) => onSelected(),
-      selectedColor: const Color(0xFF4F46E5).withValues(alpha: 0.12),
-      backgroundColor: const Color(0xFFF8FAFC),
+      selectedColor: _userAccentColor(context).withValues(alpha: 0.2),
+      backgroundColor: isDark
+          ? colors.surfaceContainerHighest
+          : const Color(0xFFF8FAFC),
       side: BorderSide(
-        color: selected ? const Color(0xFF4F46E5) : const Color(0xFFE2E8F0),
+        color: selected ? _userAccentColor(context) : _userBorderColor(context),
       ),
       labelStyle: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w600,
-        color: selected ? const Color(0xFF4F46E5) : const Color(0xFF64748B),
+        color: selected ? _userAccentColor(context) : _userMutedColor(context),
       ),
     );
   }
@@ -590,10 +612,10 @@ class _AssignedTaskTile extends StatelessWidget {
         onTap: onTap,
         title: Text(
           task.title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF0F172A),
+            color: _userTextColor(context),
           ),
         ),
         subtitle: Padding(
@@ -623,7 +645,7 @@ class _AssignedTaskTile extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                     color: task.isOverdue
                         ? const Color(0xFFDC2626)
-                        : const Color(0xFF64748B),
+                        : _userMutedColor(context),
                   ),
                 ),
             ],
@@ -680,30 +702,29 @@ class _IdentityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inactive = !user.isActive;
+    final accent = _userAccentColor(context);
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _userCardColor(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: _userBorderColor(context)),
       ),
       child: Column(
         children: [
           CircleAvatar(
             radius: 36,
             backgroundColor: inactive
-                ? const Color(0xFFE2E8F0)
-                : const Color(0xFF4F46E5).withValues(alpha: 0.12),
+                ? _userBorderColor(context)
+                : accent.withValues(alpha: 0.16),
             child: Text(
               user.initials,
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: inactive
-                    ? const Color(0xFF64748B)
-                    : const Color(0xFF4F46E5),
+                color: inactive ? _userMutedColor(context) : accent,
               ),
             ),
           ),
@@ -715,8 +736,8 @@ class _IdentityCard extends StatelessWidget {
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: inactive
-                  ? const Color(0xFF64748B)
-                  : const Color(0xFF0F172A),
+                  ? _userMutedColor(context)
+                  : _userTextColor(context),
               decoration: inactive ? TextDecoration.lineThrough : null,
             ),
           ),
@@ -726,8 +747,8 @@ class _IdentityCard extends StatelessWidget {
             children: [
               _StatusChip(
                 label: user.role.toUpperCase(),
-                background: const Color(0xFF4F46E5).withValues(alpha: 0.1),
-                foreground: const Color(0xFF4F46E5),
+                background: accent.withValues(alpha: 0.16),
+                foreground: accent,
               ),
               _StatusChip(
                 label: inactive ? 'INACTIVE' : 'ACTIVE',
@@ -787,19 +808,19 @@ class _DetailsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _userCardColor(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: _userBorderColor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
+              color: _userTextColor(context),
             ),
           ),
           const SizedBox(height: 8),
@@ -828,22 +849,22 @@ class _DetailRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF64748B)),
+          Icon(icon, size: 18, color: _userMutedColor(context)),
           const SizedBox(width: 12),
           SizedBox(
             width: 108,
             child: Text(
               label,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              style: TextStyle(fontSize: 13, color: _userMutedColor(context)),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF0F172A),
+                color: _userTextColor(context),
               ),
             ),
           ),

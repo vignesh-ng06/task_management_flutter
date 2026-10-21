@@ -60,12 +60,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppHeader(
-        section: 'Project details',
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
-        ],
-      ),
+      appBar: AppHeader(section: 'Project details'),
       floatingActionButton: _canManage(context)
           ? FloatingActionButton.extended(
               heroTag: 'project-detail-new-task',
@@ -160,9 +155,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                         vertical: 32,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Theme.of(context).colorScheme.surfaceContainerLow
+                            : Colors.white,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context).colorScheme.outlineVariant
+                              : const Color(0xFFE2E8F0),
+                        ),
                       ),
                       child: Center(
                         child: Column(
@@ -174,22 +175,32 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               color: Color(0xFF94A3B8),
                             ),
                             const SizedBox(height: 16),
-                            const Text(
+                            Text(
                               'No tasks yet in this project',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF0F172A),
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Theme.of(context).colorScheme.onSurface
+                                    : const Color(0xFF0F172A),
                               ),
                             ),
                             const SizedBox(height: 6),
-                            const Text(
+                            Text(
                               'Break this project into small tasks.\nEach task = one clear action.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF64748B),
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                    : const Color(0xFF64748B),
                               ),
                             ),
                             if (_canManage(context)) ...[
@@ -240,6 +251,8 @@ class _ProjectMembersRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final members = project.members;
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         const Icon(Icons.group_outlined, size: 18, color: Colors.grey),
@@ -263,16 +276,20 @@ class _ProjectMembersRow extends StatelessWidget {
                   left: i * 20.0,
                   child: CircleAvatar(
                     radius: 14,
-                    backgroundColor: Colors.white,
+                    backgroundColor: isDark ? colors.surface : Colors.white,
                     child: CircleAvatar(
                       radius: 12,
-                      backgroundColor: Colors.indigo.shade50,
+                      backgroundColor: isDark
+                          ? colors.primaryContainer
+                          : Colors.indigo.shade50,
                       child: Text(
                         u.initials,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: Colors.indigo.shade900,
+                          color: isDark
+                              ? colors.onPrimaryContainer
+                              : Colors.indigo.shade900,
                         ),
                       ),
                     ),

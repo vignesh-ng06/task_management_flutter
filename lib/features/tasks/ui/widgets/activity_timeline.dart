@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../data/models/task_activity.dart';
 
 class ActivityTimeline extends StatelessWidget {
@@ -37,12 +38,17 @@ class ActivityTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (activities.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(
           'No activity yet',
-          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          style: TextStyle(
+            color: isDark ? colors.onSurfaceVariant : Colors.grey[600],
+            fontSize: 13,
+          ),
         ),
       );
     }
@@ -69,17 +75,15 @@ class ActivityTimeline extends StatelessWidget {
                         color: color.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        _iconFor(a.type),
-                        size: 14,
-                        color: color,
-                      ),
+                      child: Icon(_iconFor(a.type), size: 14, color: color),
                     ),
                     if (!isLast)
                       Expanded(
                         child: Container(
                           width: 2,
-                          color: Colors.grey.shade200,
+                          color: isDark
+                              ? colors.outlineVariant
+                              : Colors.grey.shade200,
                         ),
                       ),
                   ],
@@ -94,9 +98,9 @@ class ActivityTimeline extends StatelessWidget {
                     children: [
                       RichText(
                         text: TextSpan(
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: Colors.black87,
+                            color: isDark ? colors.onSurface : Colors.black87,
                           ),
                           children: [
                             TextSpan(
@@ -114,7 +118,9 @@ class ActivityTimeline extends StatelessWidget {
                         a.relativeTime,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey[600],
+                          color: isDark
+                              ? colors.onSurfaceVariant
+                              : Colors.grey[600],
                         ),
                       ),
                     ],

@@ -86,6 +86,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final user = context.watch<AuthBloc>().state.user;
+    final colors = Theme.of(context).colorScheme;
 
     return BlocListener<AuthBloc, AuthState>(
       listenWhen: (previous, current) =>
@@ -117,9 +118,9 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
           top: 20,
           bottom: 20 + bottomInset,
         ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -131,15 +132,16 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: colors.outlineVariant,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Edit profile',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
 
@@ -151,7 +153,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                 ),
                 child: Text(
                   user?.email ?? '',
-                  style: TextStyle(color: Colors.grey[600]),
+                  style: TextStyle(color: colors.onSurfaceVariant),
                 ),
               ),
               const SizedBox(height: 12),
@@ -159,6 +161,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
               // Name
               TextField(
                 controller: _nameCtrl,
+                style: TextStyle(color: colors.onSurface),
                 decoration: const InputDecoration(
                   labelText: 'Name',
                   border: OutlineInputBorder(),
@@ -174,7 +177,10 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                     onChanged: (v) =>
                         setState(() => _changePassword = v ?? false),
                   ),
-                  const Text('Change password'),
+                  Text(
+                    'Change password',
+                    style: TextStyle(color: colors.onSurface),
+                  ),
                 ],
               ),
 
@@ -183,6 +189,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                 TextField(
                   controller: _currentPwCtrl,
                   obscureText: true,
+                  style: TextStyle(color: colors.onSurface),
                   decoration: const InputDecoration(
                     labelText: 'Current password',
                     border: OutlineInputBorder(),
@@ -192,6 +199,7 @@ class _ProfileEditSheetState extends State<_ProfileEditSheet> {
                 TextField(
                   controller: _newPwCtrl,
                   obscureText: true,
+                  style: TextStyle(color: colors.onSurface),
                   decoration: const InputDecoration(
                     labelText: 'New password',
                     border: OutlineInputBorder(),

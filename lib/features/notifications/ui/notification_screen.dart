@@ -33,17 +33,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
       backgroundColor: theme.colorScheme.surfaceContainerLowest,
       appBar: AppHeader(
         section: 'Notifications',
+        showNotificationsAction: false,
         actions: [
           BlocBuilder<NotificationBloc, NotificationState>(
             builder: (context, state) {
-              return TextButton.icon(
+              return IconButton(
+                tooltip: 'Mark all read',
                 onPressed: state.unreadCount == 0
                     ? null
                     : () => context.read<NotificationBloc>().add(
                         NotificationsMarkAllReadRequested(),
                       ),
-                icon: const Icon(Icons.done_all, size: 18),
-                label: const Text('Mark all read'),
+                icon: const Icon(Icons.done_all),
               );
             },
           ),
@@ -344,6 +345,8 @@ class _EmptyNotifications extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final noNotifications = !hasNotifications;
 
     return Center(
@@ -351,9 +354,11 @@ class _EmptyNotifications extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(24, 8, 24, 32),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          color: colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: colors.outlineVariant.withValues(alpha: 0.6),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -363,16 +368,14 @@ class _EmptyNotifications extends StatelessWidget {
                   ? Icons.notifications_off_outlined
                   : Icons.mark_email_read_outlined,
               size: 56,
-              color: const Color(0xFF94A3B8),
+              color: colors.onSurfaceVariant,
             ),
             const SizedBox(height: 16),
             Text(
               noNotifications ? 'No notifications' : 'You’re all caught up',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0F172A),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 6),
@@ -381,9 +384,8 @@ class _EmptyNotifications extends StatelessWidget {
                   ? 'You’ll see updates here when tasks are\nassigned or commented on.'
                   : 'There are no unread updates right now.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF64748B),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
               ),
             ),
           ],
@@ -439,7 +441,7 @@ class _NotificationTile extends StatelessWidget {
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
+  Future<bool> _confirmDelete(BuildContext context) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -460,11 +462,35 @@ class _NotificationTile extends StatelessWidget {
       ),
     );
 
-    if (shouldDelete == true && context.mounted) {
-      context.read<NotificationBloc>().add(
-        NotificationDeleteRequested(notification.id),
-      );
+    return shouldDelete == true;
+  }
+
+  void _deleteNotification(BuildContext context) {
+    context.read<NotificationBloc>().add(
+      NotificationDeleteRequested(notification.id),
+    );
+  }
+
+  Future<void> _confirmAndDelete(BuildContext context) async {
+    if (await _confirmDelete(context) && context.mounted) {
+      _deleteNotification(context);
     }
+  }
+
+  Future<bool?> _confirmSwipe(
+    BuildContext context,
+    DismissDirection direction,
+  ) async {
+    if (direction == DismissDirection.startToEnd) {
+      if (!notification.isRead) {
+        context.read<NotificationBloc>().add(
+          NotificationMarkReadRequested(notification.id),
+        );
+      }
+      return false;
+    }
+
+    return _confirmDelete(context);
   }
 
   IconData get _icon {
@@ -500,150 +526,233 @@ class _NotificationTile extends StatelessWidget {
     final isUnread = !notification.isRead;
     final accent = _accent(colors);
 
-    return Material(
-      color: isUnread
-          ? colors.primaryContainer.withValues(alpha: 0.28)
-          : colors.surface,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
+    return Dismissible(
+      key: ValueKey('notification-swipe-${notification.id}'),
+      direction: DismissDirection.horizontal,
+      confirmDismiss: (direction) => _confirmSwipe(context, direction),
+      onDismissed: (_) => _deleteNotification(context),
+      background: _SwipeActionBackground(
+        color: const Color(0xFF16845B),
+        icon: Icons.mark_email_read_outlined,
+        label: 'Mark as read',
+        alignment: Alignment.centerLeft,
+      ),
+      secondaryBackground: _SwipeActionBackground(
+        color: colors.error,
+        icon: Icons.delete_outline_rounded,
+        label: 'Delete',
+        alignment: Alignment.centerRight,
+      ),
+      child: Material(
+        color: isUnread
+            ? colors.primaryContainer.withValues(alpha: 0.28)
+            : colors.surface,
         borderRadius: BorderRadius.circular(18),
-        onTap: () => _openDestination(context),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isUnread
-                  ? colors.primary.withValues(alpha: 0.18)
-                  : colors.outlineVariant.withValues(alpha: 0.55),
-            ),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(_icon, color: accent, size: 22),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _openDestination(context),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isUnread
+                    ? colors.primary.withValues(alpha: 0.18)
+                    : colors.outlineVariant.withValues(alpha: 0.55),
               ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            notification.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: isUnread
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        if (isUnread)
-                          Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.only(top: 5, left: 8),
-                            decoration: BoxDecoration(
-                              color: colors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        SizedBox(
-                          width: 32,
-                          height: 32,
-                          child: PopupMenuButton<String>(
-                            tooltip: 'Notification actions',
-                            padding: EdgeInsets.zero,
-                            iconSize: 19,
-                            icon: Icon(
-                              Icons.more_horiz,
-                              color: colors.onSurfaceVariant,
-                            ),
-                            onSelected: (action) {
-                              if (action == 'delete') {
-                                _confirmDelete(context);
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.delete_outline,
-                                      size: 18,
-                                      color: colors.error,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    const Text('Delete'),
-                                  ],
-                                ),
+              boxShadow: [
+                BoxShadow(
+                  color: colors.shadow.withValues(alpha: 0.035),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(_icon, color: accent, size: 22),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              notification.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: isUnread
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      notification.message,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colors.onSurfaceVariant,
-                        height: 1.35,
+                          if (isUnread)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(top: 5, left: 8),
+                              decoration: BoxDecoration(
+                                color: colors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: PopupMenuButton<String>(
+                              tooltip: 'Notification actions',
+                              padding: EdgeInsets.zero,
+                              iconSize: 19,
+                              icon: Icon(
+                                Icons.more_horiz,
+                                color: colors.onSurfaceVariant,
+                              ),
+                              onSelected: (action) {
+                                if (action == 'delete') {
+                                  _confirmAndDelete(context);
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.delete_outline,
+                                        size: 18,
+                                        color: colors.error,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      const Text('Delete'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.schedule_rounded,
-                          size: 14,
+                      const SizedBox(height: 5),
+                      Text(
+                        notification.message,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           color: colors.onSurfaceVariant,
+                          height: 1.35,
                         ),
-                        const SizedBox(width: 5),
-                        Text(
-                          notification.relativeTime,
-                          style: theme.textTheme.labelSmall?.copyWith(
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 14,
                             color: colors.onSurfaceVariant,
                           ),
-                        ),
-                        const Spacer(),
-                        if (isUnread)
+                          const SizedBox(width: 5),
                           Text(
-                            notification.linkId != null &&
-                                    (notification.linkType?.toLowerCase() ==
-                                            'task' ||
-                                        notification.linkType?.toLowerCase() ==
-                                            'project')
-                                ? 'Tap to open'
-                                : 'Tap to mark read',
+                            notification.relativeTime,
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: colors.primary,
-                              fontWeight: FontWeight.w600,
+                              color: colors.onSurfaceVariant,
                             ),
                           ),
-                      ],
-                    ),
-                  ],
+                          const Spacer(),
+                          if (isUnread)
+                            Text(
+                              notification.linkId != null &&
+                                      (notification.linkType?.toLowerCase() ==
+                                              'task' ||
+                                          notification.linkType
+                                                  ?.toLowerCase() ==
+                                              'project')
+                                  ? 'Tap to open'
+                                  : 'Tap to mark read',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SwipeActionBackground extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final String label;
+  final Alignment alignment;
+
+  const _SwipeActionBackground({
+    required this.color,
+    required this.icon,
+    required this.label,
+    required this.alignment,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isLeftAligned = alignment == Alignment.centerLeft;
+
+    return Container(
+      alignment: alignment,
+      padding: EdgeInsets.only(
+        left: isLeftAligned ? 20 : 0,
+        right: isLeftAligned ? 0 : 20,
+      ),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!isLeftAligned) ...[
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Icon(icon, color: Colors.white),
+          if (isLeftAligned) ...[
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

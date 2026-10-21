@@ -12,6 +12,7 @@ import 'features/auth/ui/login_screen.dart';
 import 'features/notifications/bloc/notification_bloc.dart';
 import 'features/notifications/bloc/notification_event.dart';
 import 'features/notifications/data/notification_repository.dart';
+import 'features/notifications/ui/notification_screen.dart';
 import 'features/tasks/bloc/task_bloc.dart';
 import 'features/tasks/data/task_repository.dart';
 import 'app_shell.dart';
@@ -19,6 +20,7 @@ import 'features/users/data/user_repository.dart';
 import 'features/projects/data/project_repository.dart';
 import 'features/projects/bloc/project_bloc.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_mode_cubit.dart';
 import 'features/home/data/dashboard_repository.dart';
 
 void main() {
@@ -58,11 +60,18 @@ class TaskApp extends StatelessWidget {
           BlocProvider(create: (_) => TaskBloc(taskRepo)),
           BlocProvider(create: (_) => NotificationBloc(notifRepo)),
           BlocProvider(create: (_) => ProjectBloc(projectRepo)),
+          BlocProvider(create: (_) => ThemeModeCubit()),
         ],
-        child: MaterialApp(
-          title: 'TaskFlow',
-          theme: AppTheme.light(),
-          home: const AuthGate(),
+        child: BlocBuilder<ThemeModeCubit, ThemeMode>(
+          builder: (context, themeMode) => MaterialApp(
+            title: 'TaskFlow',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: themeMode,
+            home: const AuthGate(),
+            routes: {'/notifications': (_) => const NotificationScreen()},
+          ),
         ),
       ),
     );

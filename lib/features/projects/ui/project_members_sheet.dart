@@ -61,7 +61,9 @@ class _ProjectMembersSheetState extends State<_ProjectMembersSheet> {
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
       child: Material(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Theme.of(context).colorScheme.surface
+            : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         clipBehavior: Clip.antiAlias,
         child: Padding(

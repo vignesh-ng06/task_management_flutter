@@ -364,6 +364,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 5),
         TextFormField(
           controller: _emailCtrl,
+          style: const TextStyle(color: _onSurface),
           keyboardType: TextInputType.emailAddress,
           textInputAction: TextInputAction.next,
           autocorrect: false,
@@ -452,6 +453,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 2),
         TextFormField(
           controller: _passwordCtrl,
+          style: const TextStyle(color: _onSurface),
           obscureText: !_passwordVisible,
           textInputAction: TextInputAction.done,
           autofillHints: const [AutofillHints.password],

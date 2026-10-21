@@ -20,6 +20,27 @@ const _kTextLight = Color(0xFF94A3B8);
 const _kSuccess = Color(0xFF10B981);
 const _kInfo = Color(0xFF3B82F6);
 
+bool _isDark(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
+
+Color _screenBackground(BuildContext context) =>
+    _isDark(context) ? Theme.of(context).colorScheme.surface : _kBg;
+
+Color _cardBackground(BuildContext context) => _isDark(context)
+    ? Theme.of(context).colorScheme.surfaceContainerLow
+    : Colors.white;
+
+Color _borderColor(BuildContext context) =>
+    _isDark(context) ? Theme.of(context).colorScheme.outlineVariant : _kBorder;
+
+Color _mutedTextColor(BuildContext context) => _isDark(context)
+    ? Theme.of(context).colorScheme.onSurfaceVariant
+    : _kTextMuted;
+
+Color _lightTextColor(BuildContext context) => _isDark(context)
+    ? Theme.of(context).colorScheme.onSurfaceVariant
+    : _kTextLight;
+
 Color _roleColor(String role) {
   switch (role) {
     case 'admin':
@@ -72,17 +93,8 @@ class _UsersViewState extends State<_UsersView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _kBg,
-      appBar: AppHeader(
-        section: 'Users',
-        actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh),
-            onPressed: () => _reload(context),
-          ),
-        ],
-      ),
+      backgroundColor: _screenBackground(context),
+      appBar: AppHeader(section: 'Users'),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'users-add-user',
         backgroundColor: _kPrimary,
@@ -175,9 +187,11 @@ class _UsersViewState extends State<_UsersView> {
             children: [
               // ── Control panel (search + toggle + role chips with counts) ──
               Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(bottom: BorderSide(color: _kBorder)),
+                decoration: BoxDecoration(
+                  color: _cardBackground(context),
+                  border: Border(
+                    bottom: BorderSide(color: _borderColor(context)),
+                  ),
                 ),
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
                 child: Column(
@@ -244,20 +258,20 @@ class _UsersViewState extends State<_UsersView> {
                   children: [
                     Text(
                       '${displayList.length} ${displayList.length == 1 ? 'member' : 'members'}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: _kTextMuted,
+                        color: _mutedTextColor(context),
                         letterSpacing: 0.3,
                       ),
                     ),
                     const Spacer(),
                     Text(
                       state.includeInactive ? 'Inactive' : 'Active',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: _kTextLight,
+                        color: _lightTextColor(context),
                       ),
                     ),
                   ],
@@ -359,33 +373,47 @@ class _SearchField extends StatelessWidget {
       child: TextField(
         controller: controller,
         onChanged: onChanged,
-        style: const TextStyle(fontSize: 14, color: _kTextDark),
+        style: TextStyle(
+          fontSize: 14,
+          color: _isDark(context)
+              ? Theme.of(context).colorScheme.onSurface
+              : _kTextDark,
+        ),
         decoration: InputDecoration(
           hintText: 'Search name or email',
-          hintStyle: const TextStyle(fontSize: 13, color: _kTextLight),
-          prefixIcon: const Icon(Icons.search, size: 20, color: _kTextLight),
+          hintStyle: TextStyle(fontSize: 13, color: _lightTextColor(context)),
+          prefixIcon: Icon(
+            Icons.search,
+            size: 20,
+            color: _lightTextColor(context),
+          ),
           suffixIcon: showClear
               ? IconButton(
                   icon: const Icon(Icons.close, size: 18),
-                  color: _kTextLight,
+                  color: _lightTextColor(context),
                   onPressed: onClear,
                 )
               : null,
           filled: true,
-          fillColor: _kBg,
+          fillColor: _screenBackground(context),
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _kBorder),
+            borderSide: BorderSide(color: _borderColor(context)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _kBorder),
+            borderSide: BorderSide(color: _borderColor(context)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _kPrimary, width: 1.4),
+            borderSide: BorderSide(
+              color: _isDark(context)
+                  ? Theme.of(context).colorScheme.primary
+                  : _kPrimary,
+              width: 1.4,
+            ),
           ),
         ),
       ),
@@ -421,7 +449,7 @@ class _StatusToggle extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : _kTextMuted,
+              color: selected ? Colors.white : _mutedTextColor(context),
             ),
           ),
         ),
@@ -432,9 +460,9 @@ class _StatusToggle extends StatelessWidget {
       height: 42,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: _kBg,
+        color: _screenBackground(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kBorder),
+        border: Border.all(color: _borderColor(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -472,7 +500,7 @@ class _FilterChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : _kTextMuted,
+                color: selected ? Colors.white : _mutedTextColor(context),
               ),
             ),
             const SizedBox(width: 6),
@@ -481,7 +509,7 @@ class _FilterChip extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected
                     ? Colors.white.withValues(alpha: 0.25)
-                    : _kBorder,
+                    : _borderColor(context),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -489,7 +517,7 @@ class _FilterChip extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: selected ? Colors.white : _kTextMuted,
+                  color: selected ? Colors.white : _mutedTextColor(context),
                 ),
               ),
             ),
@@ -497,8 +525,8 @@ class _FilterChip extends StatelessWidget {
         ),
         selected: selected,
         selectedColor: _kPrimary,
-        backgroundColor: Colors.white,
-        side: BorderSide(color: selected ? _kPrimary : _kBorder),
+        backgroundColor: _cardBackground(context),
+        side: BorderSide(color: selected ? _kPrimary : _borderColor(context)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         showCheckmark: false,
         visualDensity: VisualDensity.compact,
@@ -522,7 +550,7 @@ class _UserCard extends StatelessWidget {
     final color = _roleColor(user.role);
 
     return Material(
-      color: Colors.white,
+      color: _cardBackground(context),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -538,7 +566,7 @@ class _UserCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _kBorder),
+            border: Border.all(color: _borderColor(context)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -570,7 +598,10 @@ class _UserCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: inactive ? _kTextLight : _kSuccess,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                        border: Border.all(
+                          color: _cardBackground(context),
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -590,7 +621,11 @@ class _UserCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: inactive ? _kTextLight : _kTextDark,
+                        color: inactive
+                            ? _lightTextColor(context)
+                            : _isDark(context)
+                            ? Theme.of(context).colorScheme.onSurface
+                            : _kTextDark,
                         decoration: inactive
                             ? TextDecoration.lineThrough
                             : null,
@@ -601,7 +636,10 @@ class _UserCard extends StatelessWidget {
                       user.email,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, color: _kTextMuted),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _mutedTextColor(context),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Wrap(
@@ -609,10 +647,7 @@ class _UserCard extends StatelessWidget {
                       runSpacing: 6,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        _Badge(
-                          label: user.role.toUpperCase(),
-                          color: color,
-                        ),
+                        _Badge(label: user.role.toUpperCase(), color: color),
                         if (inactive)
                           const _Badge(label: 'INACTIVE', color: Colors.red),
                         _ProjectsBadge(count: user.projectCount),
@@ -622,7 +657,7 @@ class _UserCard extends StatelessWidget {
                 ),
               ),
 
-              const Icon(Icons.chevron_right, color: _kTextLight),
+              Icon(Icons.chevron_right, color: _lightTextColor(context)),
             ],
           ),
         ),
@@ -664,7 +699,7 @@ class _ProjectsBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final empty = count == 0;
-    final color = empty ? _kTextLight : _kTextMuted;
+    final color = _mutedTextColor(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -723,7 +758,7 @@ class _UsersEmptyState extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: _kTextDark,

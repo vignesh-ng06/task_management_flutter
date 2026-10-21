@@ -27,16 +27,7 @@ class _HomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppHeader(
-        section: 'Home',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () =>
-                context.read<HomeBloc>().add(HomeRefreshRequested()),
-          ),
-        ],
-      ),
+      appBar: AppHeader(section: 'Home'),
       body: BlocBuilder<HomeBloc, HomeState>(
         builder: (context, state) {
           if (state.status == HomeStatus.loading && state.data == null) {
@@ -47,15 +38,13 @@ class _HomeView extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline,
-                      size: 48, color: Colors.grey),
+                  const Icon(Icons.error_outline, size: 48, color: Colors.grey),
                   const SizedBox(height: 12),
                   Text(state.error ?? 'Error'),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () => context
-                        .read<HomeBloc>()
-                        .add(HomeLoadRequested()),
+                    onPressed: () =>
+                        context.read<HomeBloc>().add(HomeLoadRequested()),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -149,7 +138,7 @@ class _GreetingCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             name,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -182,7 +171,9 @@ class _Pill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: outline ? Colors.transparent : Colors.white.withValues(alpha: 0.2),
+        color: outline
+            ? Colors.transparent
+            : Colors.white.withValues(alpha: 0.2),
         border: outline
             ? Border.all(color: Colors.white.withValues(alpha: 0.5))
             : null,
@@ -190,7 +181,7 @@ class _Pill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
           fontSize: 10,
           fontWeight: FontWeight.w700,
@@ -279,12 +270,16 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? colors.surfaceContainerLow : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isDark ? colors.outlineVariant : const Color(0xFFE2E8F0),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,7 +309,7 @@ class _StatCard extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: isDark ? colors.onSurfaceVariant : Colors.grey[600],
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -336,16 +331,20 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.grey[700]),
+        Icon(
+          icon,
+          size: 18,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? colors.onSurfaceVariant
+              : Colors.grey[700],
+        ),
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ],
     );
@@ -374,23 +373,25 @@ class _RecentTaskTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => TaskDetailScreen(taskId: task.id),
-          ),
+          MaterialPageRoute(builder: (_) => TaskDetailScreen(taskId: task.id)),
         );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? colors.surfaceContainerLow : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(
+            color: isDark ? colors.outlineVariant : const Color(0xFFE2E8F0),
+          ),
         ),
         child: Row(
           children: [
@@ -419,8 +420,13 @@ class _RecentTaskTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.folder_outlined,
-                          size: 12, color: Colors.grey[600]),
+                      Icon(
+                        Icons.folder_outlined,
+                        size: 12,
+                        color: isDark
+                            ? colors.onSurfaceVariant
+                            : Colors.grey[600],
+                      ),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
@@ -429,24 +435,32 @@ class _RecentTaskTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey[600],
+                            color: isDark
+                                ? colors.onSurfaceVariant
+                                : Colors.grey[600],
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: isDark
+                              ? colors.surfaceContainerHighest
+                              : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           task.status.replaceAll('_', ' '),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
-                            color: Colors.black54,
+                            color: isDark
+                                ? colors.onSurfaceVariant
+                                : Colors.black54,
                           ),
                         ),
                       ),
@@ -488,6 +502,8 @@ class _StatusBreakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = breakdown.values.fold<int>(0, (a, b) => a + b);
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (total == 0) {
       return const _EmptyCard(
@@ -499,9 +515,11 @@ class _StatusBreakdown extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? colors.surfaceContainerLow : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isDark ? colors.outlineVariant : const Color(0xFFE2E8F0),
+        ),
       ),
       child: Column(
         children: breakdown.entries.map((e) {
@@ -523,7 +541,9 @@ class _StatusBreakdown extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: pct,
                       minHeight: 8,
-                      backgroundColor: Colors.grey.shade200,
+                      backgroundColor: isDark
+                          ? colors.surfaceContainerHighest
+                          : Colors.grey.shade200,
                       valueColor: AlwaysStoppedAnimation(_colorFor(e.key)),
                     ),
                   ),
@@ -559,25 +579,29 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? colors.surfaceContainerLow : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: isDark ? colors.outlineVariant : const Color(0xFFE2E8F0),
+        ),
       ),
       child: Column(
         children: [
           Icon(Icons.inbox_outlined, size: 40, color: Colors.grey[400]),
           const SizedBox(height: 8),
-          Text(
-            message,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
+          Text(message, style: const TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
           Text(
             hint,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? colors.onSurfaceVariant : Colors.grey[600],
+            ),
             textAlign: TextAlign.center,
           ),
         ],

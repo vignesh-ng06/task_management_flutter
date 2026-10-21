@@ -6,6 +6,7 @@ import 'package:task_app/features/profile/ui/profile_edit_sheet.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../../core/widgets/app_header.dart';
+import '../../../core/theme/theme_mode_cubit.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -17,7 +18,10 @@ class ProfileScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: const AppHeader(section: 'Profile'),
+      appBar: const AppHeader(
+        section: 'Profile',
+        actions: [_ThemeModeButton()],
+      ),
       body: user == null
           ? const Center(child: Text('Not logged in'))
           : ListView(
@@ -168,6 +172,46 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _ThemeModeButton extends StatelessWidget {
+  const _ThemeModeButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ThemeModeCubit, ThemeMode>(
+      builder: (context, themeMode) => PopupMenuButton<ThemeMode>(
+        tooltip: 'Change theme',
+        icon: Icon(switch (themeMode) {
+          ThemeMode.light => Icons.light_mode_outlined,
+          ThemeMode.dark => Icons.dark_mode_outlined,
+          ThemeMode.system => Icons.brightness_auto_outlined,
+        }),
+        onSelected: context.read<ThemeModeCubit>().setThemeMode,
+        itemBuilder: (context) => [
+          _themeMenuItem(ThemeMode.system, 'System', themeMode),
+          _themeMenuItem(ThemeMode.light, 'Light', themeMode),
+          _themeMenuItem(ThemeMode.dark, 'Dark', themeMode),
+        ],
+      ),
+    );
+  }
+
+  PopupMenuItem<ThemeMode> _themeMenuItem(
+    ThemeMode mode,
+    String label,
+    ThemeMode selectedMode,
+  ) {
+    return PopupMenuItem(
+      value: mode,
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          if (mode == selectedMode) const Icon(Icons.check, size: 18),
+        ],
+      ),
     );
   }
 }
