@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../data/models/task_model.dart';
 
 class TaskCard extends StatelessWidget {
@@ -7,7 +8,13 @@ class TaskCard extends StatelessWidget {
   final VoidCallback? onLongPress;
   final bool showAssignee;
 
-  const TaskCard({super.key, required this.task, this.onTap, this.onLongPress , this.showAssignee = false});
+  const TaskCard({
+    super.key,
+    required this.task,
+    this.onTap,
+    this.onLongPress,
+    this.showAssignee = false,
+  });
 
   Color get _priorityColor {
     switch (task.priority) {
@@ -53,35 +60,35 @@ class TaskCard extends StatelessWidget {
               // Title + priority dot
               Row(
                 children: [
-                   Container(
-                     width: 10,
-                     height: 10,
-                     decoration: BoxDecoration(
-                       color: _priorityColor,
-                       shape: BoxShape.circle,
-                     ),
-                   ),
-                   const SizedBox(width: 8),
-                   Expanded(
-                     child: Text(
-                       task.title,
-                       style: const TextStyle(
-                         fontWeight: FontWeight.w600,
-                         fontSize: 16,
-                       ),
-                       maxLines: 2,
-                       overflow: TextOverflow.ellipsis,
-                     ),
-                   ),
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: _priorityColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      task.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               if (task.description != null && task.description!.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(
-                   task.description!,
-                   style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                   maxLines: 2,
-                   overflow: TextOverflow.ellipsis,
+                  task.description!,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
               const SizedBox(height: 10),
@@ -90,25 +97,25 @@ class TaskCard extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 6,
                 children: [
-                   _Chip(text: task.status, color: _statusColor),
-                   _Chip(text: task.priority, color: _priorityColor),
-                   if (task.projectName != 'No project')
-                     _Chip(
-                       text: task.projectName,
-                       color: Colors.indigo,
-                       icon: Icons.folder_outlined,
-                     ),
-                   _Chip(
-                     text: task.dueDateLabel,
-                     color: task.isOverdue ? Colors.red : Colors.grey,
-                     icon: Icons.schedule,
-                   ),
-                   if (showAssignee)
-                     _Chip(
-                       text: task.assigneeName,
-                       color: Colors.teal,
-                       icon: Icons.person_outline,
-                     ),
+                  _Chip(text: task.status, color: _statusColor),
+                  _Chip(text: task.priority, color: _priorityColor),
+                  if (task.projectName != 'No project')
+                    _Chip(
+                      text: task.projectName,
+                      color: Colors.indigo,
+                      icon: Icons.folder_outlined,
+                    ),
+                  _Chip(
+                    text: task.dueDateLabel,
+                    color: task.isOverdue ? Colors.red : Colors.grey,
+                    icon: Icons.schedule,
+                  ),
+                  if (showAssignee)
+                    _Chip(
+                      text: task.assigneeName,
+                      color: Colors.teal,
+                      icon: Icons.person_outline,
+                    ),
                 ],
               ),
             ],

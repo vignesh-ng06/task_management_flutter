@@ -214,6 +214,34 @@ class _FilterSheetState extends State<_FilterSheet> {
             ),
             const SizedBox(height: 16),
 
+            // ── Task visibility ──
+            const Text(
+              'Task visibility',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Active tasks'),
+                  selected: !_filters.includeInactive,
+                  onSelected: (_) => setState(
+                    () => _filters = _filters.copyWith(includeInactive: false),
+                  ),
+                ),
+                ChoiceChip(
+                  label: const Text('Inactive tasks'),
+                  selected: _filters.includeInactive,
+                  onSelected: (selected) => setState(
+                    () =>
+                        _filters = _filters.copyWith(includeInactive: selected),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
             // ── Project ──
             DropdownButtonFormField<int?>(
               initialValue: _filters.projectId,

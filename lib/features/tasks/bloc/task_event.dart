@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+
 import 'task_state.dart';
 
 abstract class TaskEvent extends Equatable {
@@ -42,13 +43,27 @@ class TaskCreateRequested extends TaskEvent {
   });
 
   @override
-  List<Object?> get props =>
-      [title, description, projectId, assignedTo, priority, dueDate];
+  List<Object?> get props => [
+    title,
+    description,
+    projectId,
+    assignedTo,
+    priority,
+    dueDate,
+  ];
 }
 
 class TaskDeleteRequested extends TaskEvent {
   final int id;
   const TaskDeleteRequested(this.id);
+  @override
+  List<Object?> get props => [id];
+}
+
+class TaskActivateRequested extends TaskEvent {
+  final int id;
+  const TaskActivateRequested(this.id);
+
   @override
   List<Object?> get props => [id];
 }
@@ -78,11 +93,16 @@ class TaskUpdateRequested extends TaskEvent {
 
   @override
   List<Object?> get props => [
-    id, title, description, clearDescription, priority, dueDate,
-        clearDueDate, assignedTo, clearAssignee,
-      ];
-
-      
+    id,
+    title,
+    description,
+    clearDescription,
+    priority,
+    dueDate,
+    clearDueDate,
+    assignedTo,
+    clearAssignee,
+  ];
 }
 
 class TaskModeChanged extends TaskEvent {

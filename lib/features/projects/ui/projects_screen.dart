@@ -31,12 +31,61 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   }
 }
 
-class _ProjectsView extends StatelessWidget {
+enum _ProjectFilter { all, active, inactive, withTasks, withoutTasks }
+
+class _ProjectsView extends StatefulWidget {
   const _ProjectsView();
+
+  @override
+  State<_ProjectsView> createState() => _ProjectsViewState();
+}
+
+class _ProjectsViewState extends State<_ProjectsView> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  _ProjectFilter _filter = _ProjectFilter.all;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   bool _canManage(BuildContext context) {
     final role = context.watch<AuthBloc>().state.user?.role;
     return role == 'admin' || role == 'manager';
+  }
+
+  void _requestProjectsLoad(BuildContext context) {
+    context.read<ProjectBloc>().add(
+      ProjectsLoadRequested(
+        includeInactive: _filter == _ProjectFilter.inactive,
+      ),
+    );
+  }
+
+  void _onFilterChanged(BuildContext context, _ProjectFilter filter) {
+    setState(() => _filter = filter);
+    _requestProjectsLoad(context);
+  }
+
+  List<Project> _visibleProjects(List<Project> projects) {
+    final query = _searchQuery.trim().toLowerCase();
+    return projects.where((project) {
+      final matchesSearch =
+          query.isEmpty ||
+          project.name.toLowerCase().contains(query) ||
+          (project.description?.toLowerCase().contains(query) ?? false);
+      if (!matchesSearch) return false;
+
+      return switch (_filter) {
+        _ProjectFilter.all => true,
+        _ProjectFilter.active => project.isActive,
+        _ProjectFilter.inactive => !project.isActive,
+        _ProjectFilter.withTasks => project.taskCount > 0,
+        _ProjectFilter.withoutTasks => project.taskCount == 0,
+      };
+    }).toList();
   }
 
   @override
@@ -107,9 +156,7 @@ class _ProjectsView extends StatelessWidget {
                   Text(state.error ?? 'Error loading projects'),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () => context.read<ProjectBloc>().add(
-                      const ProjectsLoadRequested(),
-                    ),
+                    onPressed: () => _requestProjectsLoad(context),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -119,7 +166,7 @@ class _ProjectsView extends StatelessWidget {
           if (state.projects.isEmpty) {
             return RefreshIndicator(
               onRefresh: () async {
-                context.read<ProjectBloc>().add(const ProjectsLoadRequested());
+                _requestProjectsLoad(context);
                 await Future.delayed(const Duration(milliseconds: 500));
               },
               child: CustomScrollView(
@@ -203,43 +250,85 @@ class _ProjectsView extends StatelessWidget {
             );
           }
 
+          final visibleProjects = _visibleProjects(state.projects);
+
           return RefreshIndicator(
             onRefresh: () async {
-              context.read<ProjectBloc>().add(const ProjectsLoadRequested());
+              _requestProjectsLoad(context);
               await Future.delayed(const Duration(milliseconds: 500));
             },
-            child: GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.95,
-              ),
-              itemCount: state.projects.length,
-              itemBuilder: (_, i) {
-                final project = state.projects[i];
-                final projectBloc = context.read<ProjectBloc>();
-                return _ProjectCard(
-                  key: ValueKey(
-                    'proj-${project.id}-${project.name}-${project.description}',
-                  ),
-                  project: project,
-                  onTap: () async {
-                    await Navigator.push<void>(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) =>
-                            ProjectDetailScreen(projectId: project.id),
-                      ),
-                    );
-                    projectBloc.add(const ProjectsLoadRequested());
+            child: Column(
+              children: [
+                _ProjectSearchBar(
+                  controller: _searchController,
+                  query: _searchQuery,
+                  filter: _filter,
+                  onQueryChanged: (value) => setState(() {
+                    _searchQuery = value;
+                  }),
+                  onClear: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
                   },
-                  onLongPress: _canManage(context)
-                      ? () => _showActions(context, project)
-                      : null,
-                );
-              },
+                  onFilterChanged: (value) => _onFilterChanged(context, value),
+                ),
+                Expanded(
+                  child: visibleProjects.isEmpty
+                      ? SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: _NoMatchingProjects(
+                            hasSearch: _searchQuery.trim().isNotEmpty,
+                            onClear: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                                _filter = _ProjectFilter.all;
+                              });
+                            },
+                          ),
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 0.95,
+                              ),
+                          itemCount: visibleProjects.length,
+                          itemBuilder: (_, i) {
+                            final project = visibleProjects[i];
+                            final projectBloc = context.read<ProjectBloc>();
+                            return _ProjectCard(
+                              key: ValueKey(
+                                'proj-${project.id}-${project.name}-${project.description}',
+                              ),
+                              project: project,
+                              onTap: () async {
+                                await Navigator.push<void>(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => ProjectDetailScreen(
+                                      projectId: project.id,
+                                    ),
+                                  ),
+                                );
+                                projectBloc.add(
+                                  ProjectsLoadRequested(
+                                    includeInactive:
+                                        _filter == _ProjectFilter.inactive,
+                                  ),
+                                );
+                              },
+                              onLongPress: _canManage(context)
+                                  ? () => _showActions(context, project)
+                                  : null,
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
           );
         },
@@ -302,6 +391,147 @@ class _ProjectsView extends StatelessWidget {
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProjectSearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final String query;
+  final _ProjectFilter filter;
+  final ValueChanged<String> onQueryChanged;
+  final VoidCallback onClear;
+  final ValueChanged<_ProjectFilter> onFilterChanged;
+
+  const _ProjectSearchBar({
+    required this.controller,
+    required this.query,
+    required this.filter,
+    required this.onQueryChanged,
+    required this.onClear,
+    required this.onFilterChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: onQueryChanged,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search projects or descriptions',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: query.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        onPressed: onClear,
+                        icon: const Icon(Icons.clear),
+                      ),
+                filled: true,
+                fillColor: colors.surfaceContainerLow,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: colors.outlineVariant),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: colors.primary, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          PopupMenuButton<_ProjectFilter>(
+            tooltip: 'Filter projects',
+            initialValue: filter,
+            onSelected: onFilterChanged,
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _ProjectFilter.all,
+                child: Text('All projects'),
+              ),
+              PopupMenuItem(
+                value: _ProjectFilter.active,
+                child: Text('Active projects'),
+              ),
+              PopupMenuItem(
+                value: _ProjectFilter.inactive,
+                child: Text('Inactive projects'),
+              ),
+              PopupMenuItem(
+                value: _ProjectFilter.withTasks,
+                child: Text('Projects with tasks'),
+              ),
+              PopupMenuItem(
+                value: _ProjectFilter.withoutTasks,
+                child: Text('Projects without tasks'),
+              ),
+            ],
+            icon: Badge(
+              isLabelVisible: filter != _ProjectFilter.all,
+              smallSize: 8,
+              child: const Icon(Icons.tune),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoMatchingProjects extends StatelessWidget {
+  final bool hasSearch;
+  final VoidCallback onClear;
+
+  const _NoMatchingProjects({required this.hasSearch, required this.onClear});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              hasSearch ? Icons.search_off : Icons.filter_alt_off_outlined,
+              size: 48,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              hasSearch
+                  ? 'No matching projects'
+                  : 'No projects for this filter',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              hasSearch
+                  ? 'Try a different name or description.'
+                  : 'Try another filter to see more projects.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton(onPressed: onClear, child: const Text('Clear')),
+          ],
+        ),
       ),
     );
   }

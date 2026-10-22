@@ -41,15 +41,15 @@ class _TaskDetailView extends StatelessWidget {
         actions: [
           if (canEditTask)
             BlocBuilder<TaskDetailBloc, TaskDetailState>(
-              builder: (context, state) => IconButton(
-                tooltip: 'Edit task',
-                onPressed:
-                    state.task == null ||
-                        state.status == TaskDetailStatus.updating
-                    ? null
-                    : () => showTaskDetailEditSheet(context, state.task!),
-                icon: const Icon(Icons.edit_outlined),
-              ),
+              builder: (context, state) => state.task?.isActive == true
+                  ? IconButton(
+                      tooltip: 'Edit task',
+                      onPressed: state.status == TaskDetailStatus.updating
+                          ? null
+                          : () => showTaskDetailEditSheet(context, state.task!),
+                      icon: const Icon(Icons.edit_outlined),
+                    )
+                  : const SizedBox.shrink(),
             ),
         ],
       ),
@@ -80,8 +80,9 @@ class _TaskDetailView extends StatelessWidget {
           if (state.task == null) {
             return const Center(child: Text('Task not found'));
           }
+          final task = state.task!;
           return _TaskBody(
-            task: state.task!,
+            task: task,
             comments: state.comments,
             isUpdating: state.status == TaskDetailStatus.updating,
             commentsLoading: state.commentsLoading,
@@ -111,6 +112,7 @@ class _TaskBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final createdAt = task.createdAt.toLocal();
     final localizations = MaterialLocalizations.of(context);
 
@@ -122,72 +124,115 @@ class _TaskBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Title + description ──
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _TaskBadge(
+                      label: task.status.replaceAll('_', ' '),
+                      icon: Icons.radio_button_checked,
+                      color: colors.primary,
+                      isDark: isDark,
+                    ),
+                    _TaskBadge(
+                      label: '${task.priority} priority',
+                      icon: Icons.flag_outlined,
+                      color: _priorityColor(task.priority),
+                      isDark: isDark,
+                    ),
+                    if (task.isOverdue)
+                      _TaskBadge(
+                        label: 'Overdue',
+                        icon: Icons.warning_amber_rounded,
+                        color: colors.error,
+                        isDark: isDark,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 14),
                 Text(
                   task.title,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                    letterSpacing: -0.4,
                   ),
                 ),
-                const SizedBox(height: 8),
-                if (task.description != null && task.description!.isNotEmpty)
-                  Text(
-                    task.description!,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? colors.onSurfaceVariant
-                          : Colors.grey[700],
-                    ),
+                if (task.description?.trim().isNotEmpty == true) ...[
+                  const SizedBox(height: 10),
+                  _TaskDescription(description: task.description!),
+                ],
+                const SizedBox(height: 18),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: colors.outlineVariant),
                   ),
-                const SizedBox(height: 24),
-
-                // ── Meta ──
-                _Section(title: 'Status', child: _statusWidget(context)),
-                const SizedBox(height: 16),
-                _Section(
-                  title: 'Priority',
-                  child: Text(
-                    task.priority,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: _priorityColor(task.priority),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _Section(title: 'Project', child: Text(task.projectName)),
-                const SizedBox(height: 16),
-                _Section(title: 'Due date', child: Text(task.dueDateLabel)),
-                const SizedBox(height: 16),
-                _Section(title: 'Assignee', child: Text(task.assigneeName)),
-                const SizedBox(height: 16),
-                _Section(
-                  title: 'Created',
-                  child: Text(
-                    '${localizations.formatMediumDate(createdAt)} at '
-                    '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(createdAt), alwaysUse24HourFormat: false)}',
-                  ),
-                ),
-
-                // ── Comments ──
-                const SizedBox(height: 32),
-                const Divider(),
-                const SizedBox(height: 12),
-
-                Row(
-                  children: [
-                    const Icon(Icons.comment_outlined, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Comments (${comments.length})',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Task information',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      _Section(title: 'Status', child: _statusWidget(context)),
+                      const SizedBox(height: 16),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final itemWidth = (constraints.maxWidth - 12) / 2;
+                          return Wrap(
+                            spacing: 12,
+                            runSpacing: 16,
+                            children: [
+                              _InfoItem(
+                                width: itemWidth,
+                                icon: Icons.folder_outlined,
+                                label: 'Project',
+                                value: task.projectName,
+                              ),
+                              _InfoItem(
+                                width: itemWidth,
+                                icon: Icons.person_outline,
+                                label: 'Assignee',
+                                value: task.assigneeName,
+                              ),
+                              _InfoItem(
+                                width: itemWidth,
+                                icon: task.isOverdue
+                                    ? Icons.warning_amber_rounded
+                                    : Icons.calendar_today_outlined,
+                                label: 'Due date',
+                                value: task.dueDateLabel,
+                                valueColor: task.isOverdue
+                                    ? colors.error
+                                    : null,
+                              ),
+                              _InfoItem(
+                                width: itemWidth,
+                                icon: Icons.schedule_outlined,
+                                label: 'Created',
+                                value:
+                                    '${localizations.formatMediumDate(createdAt)} at '
+                                    '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(createdAt), alwaysUse24HourFormat: false)}',
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 26),
+                _DetailSectionHeader(
+                  icon: Icons.chat_bubble_outline,
+                  title: 'Comments',
+                  count: comments.length,
                 ),
                 const SizedBox(height: 12),
 
@@ -199,43 +244,35 @@ class _TaskBody extends StatelessWidget {
                     ),
                   )
                 else if (comments.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'No comments yet. Be the first to comment.',
-                      style: TextStyle(color: Colors.grey),
-                    ),
+                  _EmptyDetailMessage(
+                    icon: Icons.forum_outlined,
+                    text: 'No comments yet. Start the conversation.',
                   )
                 else
-                  ...comments.map((c) => _CommentTile(comment: c)),
+                  ...comments.map(
+                    (c) =>
+                        _CommentTile(comment: c, allowActions: task.isActive),
+                  ),
 
-                // ── Activity ──
-                const SizedBox(height: 32),
-                const Divider(),
-                const SizedBox(height: 12),
-
-                Row(
-                  children: const [
-                    Icon(Icons.history, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Activity',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 18),
+                _DetailSectionHeader(
+                  icon: Icons.history,
+                  title: 'Activity',
+                  count: task.activities.length,
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 ActivityTimeline(activities: task.activities),
+                const SizedBox(height: 12),
               ],
             ),
           ),
         ),
 
         // ── Comment input at the bottom ──
-        _CommentInput(taskId: task.id, posting: postingComment),
+        if (task.isActive)
+          _CommentInput(taskId: task.id, posting: postingComment)
+        else
+          const _InactiveTaskNotice(),
       ],
     );
   }
@@ -251,7 +288,7 @@ class _TaskBody extends StatelessWidget {
             items: statuses
                 .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                 .toList(),
-            onChanged: isUpdating
+            onChanged: isUpdating || !task.isActive
                 ? null
                 : (value) {
                     if (value != null && value != task.status) {
@@ -288,9 +325,267 @@ class _TaskBody extends StatelessWidget {
   }
 }
 
+class _TaskDescription extends StatefulWidget {
+  final String description;
+
+  const _TaskDescription({required this.description});
+
+  @override
+  State<_TaskDescription> createState() => _TaskDescriptionState();
+}
+
+class _TaskDescriptionState extends State<_TaskDescription> {
+  static const _previewLineCount = 7;
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final textStyle = Theme.of(context).textTheme.bodyLarge
+        ?.copyWith(color: colors.onSurface, height: 1.55, letterSpacing: 0.05);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Description',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final painter = TextPainter(
+                text: TextSpan(text: widget.description, style: textStyle),
+                textDirection: Directionality.of(context),
+                textScaler: MediaQuery.textScalerOf(context),
+                maxLines: _previewLineCount,
+              )..layout(maxWidth: constraints.maxWidth);
+              final hasMore = painter.didExceedMaxLines;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _expanded
+                      ? SelectableText(widget.description, style: textStyle)
+                      : Text(
+                          widget.description,
+                          style: textStyle,
+                          maxLines: _previewLineCount,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                  if (hasMore)
+                    TextButton(
+                      onPressed: () => setState(() => _expanded = !_expanded),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.only(top: 8),
+                        minimumSize: const Size(0, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(_expanded ? 'Show less' : 'Show more'),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TaskBadge extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool isDark;
+
+  const _TaskBadge({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: isDark
+            ? colors.surface.withValues(alpha: 0.8)
+            : Colors.white.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoItem extends StatelessWidget {
+  final double width;
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _InfoItem({
+    required this.width,
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: width,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: colors.primary),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  softWrap: true,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: valueColor ?? colors.onSurface,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailSectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final int count;
+
+  const _DetailSectionHeader({
+    required this.icon,
+    required this.title,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: colors.primary),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: colors.secondaryContainer,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            '$count',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: colors.onSecondaryContainer,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyDetailMessage extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _EmptyDetailMessage({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: colors.onSurfaceVariant),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: colors.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CommentTile extends StatelessWidget {
   final Comment comment;
-  const _CommentTile({required this.comment});
+  final bool allowActions;
+
+  const _CommentTile({required this.comment, required this.allowActions});
 
   bool _canEdit(BuildContext context) {
     final user = context.read<AuthBloc>().state.user;
@@ -306,8 +601,8 @@ class _CommentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final canEdit = _canEdit(context);
-    final canDelete = _canDelete(context);
+    final canEdit = allowActions && _canEdit(context);
+    final canDelete = allowActions && _canDelete(context);
     final hasActions = canEdit || canDelete;
 
     return Container(
@@ -343,7 +638,10 @@ class _CommentTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           comment.authorName,
@@ -399,7 +697,11 @@ class _CommentTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(comment.message, style: const TextStyle(fontSize: 14)),
+          SelectableText(
+            comment.message,
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: colors.onSurface, height: 1.45),
+          ),
         ],
       ),
     );
@@ -589,6 +891,31 @@ class _CommentInputState extends State<_CommentInput> {
               color: colors.primary,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InactiveTaskNotice extends StatelessWidget {
+  const _InactiveTaskNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLow,
+          border: Border(top: BorderSide(color: colors.outlineVariant)),
+        ),
+        child: Text(
+          'This task is inactive and can only be viewed.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: colors.onSurfaceVariant),
         ),
       ),
     );

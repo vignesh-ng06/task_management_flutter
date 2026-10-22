@@ -13,6 +13,7 @@ class Task {
   final int createdBy;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isActive;
 
   // Optional nested fields (present when backend includes them)
   final Map<String, dynamic>? assignee;
@@ -36,6 +37,7 @@ class Task {
     required this.createdBy,
     required this.createdAt,
     required this.updatedAt,
+    this.isActive = true,
     this.assignee,
     this.creator,
     this.project,
@@ -56,6 +58,7 @@ class Task {
       createdBy: json['createdBy'],
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
+      isActive: json['isActive'] ?? true,
       assignee: json['assignee'] as Map<String, dynamic>?,
       creator: json['creator'] as Map<String, dynamic>?,
       project: json['project'] as Map<String, dynamic>?,
@@ -112,6 +115,7 @@ class Task {
     Map<String, dynamic>? project,
     List<Comment>? comments,
     List<TaskActivity>? activities,
+    bool? isActive,
   }) {
     return Task(
       id: id,
@@ -125,6 +129,7 @@ class Task {
       createdBy: createdBy,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      isActive: isActive ?? this.isActive,
       assignee: assignee ?? this.assignee,
       creator: creator,
       project: project ?? this.project,
@@ -146,6 +151,7 @@ class Task {
       createdBy: createdBy,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      isActive: isActive,
       assignee: assignee,
       creator: creator,
       project: project,
@@ -167,6 +173,7 @@ class Task {
       createdBy: createdBy,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      isActive: isActive,
       assignee: assignee,
       creator: creator,
       project: project,

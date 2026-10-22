@@ -21,6 +21,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<TaskCreateRequested>(_onCreate);
     on<TaskUpdateRequested>(_onUpdate);
     on<TaskDeleteRequested>(_onDelete);
+    on<TaskActivateRequested>(_onActivate);
   }
 
   void setCurrentUserId(int id) => _currentUserId = id;
@@ -117,8 +118,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
       if (task != null &&
           (state.mode == TaskMode.all ||
-              (_currentUserId != null &&
-                  task.assignedTo == _currentUserId))) {
+              (_currentUserId != null && task.assignedTo == _currentUserId))) {
         emit(
           state.copyWith(
             tasks: [task, ...state.tasks],
@@ -265,6 +265,31 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     } on ApiException catch (e) {
       final rolledBack = [...state.tasks]..insert(index, original);
       emit(state.copyWith(tasks: rolledBack, error: e.message));
+    }
+  }
+
+  Future<void> _onActivate(
+    TaskActivateRequested event,
+    Emitter<TaskState> emit,
+  ) async {
+    final index = state.tasks.indexWhere((t) => t.id == event.id);
+    if (index == -1) return;
+    final original = state.tasks[index];
+
+    try {
+      await _repo.activateTask(event.id);
+      final activated = original.copyWith(isActive: true);
+      final updated = [...state.tasks]..[index] = activated;
+      emit(
+        state.copyWith(
+          tasks: state.filters.includeInactive
+              ? (updated..removeWhere((task) => task.id == event.id))
+              : updated,
+          clearError: true,
+        ),
+      );
+    } on ApiException catch (e) {
+      emit(state.copyWith(error: e.message));
     }
   }
 }

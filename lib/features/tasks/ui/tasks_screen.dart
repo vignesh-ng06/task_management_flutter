@@ -171,6 +171,26 @@ class _TasksScreenState extends State<TasksScreen> {
                   ),
                 ),
 
+                if (state.filters.includeInactive)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline, size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Inactive tasks (${state.tasks.where((task) => !task.isActive).length})',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                _buildAppliedFilterChips(context, state.filters),
+
                 const SizedBox(height: 8),
 
                 // ── Body ──
@@ -204,15 +224,78 @@ class _TasksScreenState extends State<TasksScreen> {
     if (f.projectId != null) c++;
     if (f.assignedTo != null) c++;
     if (f.search.isNotEmpty) c++;
+    if (f.includeInactive) c++;
     return c;
   }
 
+  Widget _buildAppliedFilterChips(BuildContext context, TaskFilters filters) {
+    final chips = <Widget>[];
+
+    void addChip(String label, VoidCallback onDeleted) {
+      chips.add(
+        Chip(
+          label: Text(label),
+          onDeleted: onDeleted,
+          visualDensity: VisualDensity.compact,
+        ),
+      );
+    }
+
+    void update(TaskFilters next) {
+      context.read<TaskBloc>().add(TaskFiltersChanged(next));
+    }
+
+    if (filters.search.isNotEmpty) {
+      addChip('Search: ${filters.search}', () {
+        _searchCtrl.clear();
+        update(filters.copyWith(search: ''));
+      });
+    }
+    if (filters.status != null) {
+      addChip(
+        filters.status!,
+        () => update(filters.copyWith(clearStatus: true)),
+      );
+    }
+    if (filters.priority != null) {
+      addChip(
+        filters.priority!,
+        () => update(filters.copyWith(clearPriority: true)),
+      );
+    }
+    if (filters.projectId != null) {
+      addChip('Project', () => update(filters.copyWith(clearProject: true)));
+    }
+    if (filters.assignedTo != null) {
+      addChip('Assignee', () => update(filters.copyWith(clearAssignee: true)));
+    }
+    if (filters.includeInactive) {
+      addChip(
+        'Inactive tasks',
+        () => update(filters.copyWith(includeInactive: false)),
+      );
+    }
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Wrap(spacing: 6, runSpacing: 2, children: chips),
+      ),
+    );
+  }
+
   Widget _buildBody(BuildContext context, TaskState state, bool canManage) {
-    if (state.status == TaskListStatus.loading && state.tasks.isEmpty) {
+    final visibleTasks = state.filters.includeInactive
+        ? state.tasks.where((task) => !task.isActive).toList()
+        : state.tasks;
+
+    if (state.status == TaskListStatus.loading && visibleTasks.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (state.status == TaskListStatus.error && state.tasks.isEmpty) {
+    if (state.status == TaskListStatus.error && visibleTasks.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -231,7 +314,7 @@ class _TasksScreenState extends State<TasksScreen> {
       );
     }
 
-    if (state.tasks.isEmpty) {
+    if (visibleTasks.isEmpty) {
       return RefreshIndicator(
         onRefresh: () async {
           context.read<TaskBloc>().add(const TasksRefreshRequested());
@@ -274,6 +357,8 @@ class _TasksScreenState extends State<TasksScreen> {
                       Text(
                         state.mode == TaskMode.mine
                             ? "You're all caught up"
+                            : state.filters.includeInactive
+                            ? 'No inactive tasks found'
                             : 'No tasks in your company yet',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -318,35 +403,51 @@ class _TasksScreenState extends State<TasksScreen> {
       },
       child: ListView.builder(
         padding: const EdgeInsets.all(12),
-        itemCount: state.tasks.length,
+        itemCount: visibleTasks.length,
         itemBuilder: (context, i) {
-          final task = state.tasks[i];
+          final task = visibleTasks[i];
           final taskBloc = context.read<TaskBloc>();
-          return TaskCard(
-            key: ValueKey(
-              'task-${task.id}-${task.status}-${task.priority}-${task.title}',
-            ),
-            task: task,
-            showAssignee: state.mode == TaskMode.all,
-            onTap: () async {
-              await Navigator.push<void>(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => TaskDetailScreen(taskId: task.id),
-                ),
-              );
-              taskBloc.add(const TasksRefreshRequested());
+          return Dismissible(
+            key: ValueKey('task-swipe-${task.id}-${task.isActive}'),
+            direction: canManage
+                ? DismissDirection.startToEnd
+                : DismissDirection.none,
+            background: _SwipeActionBackground(isInactive: !task.isActive),
+            confirmDismiss: (_) => _confirmTaskAction(context, task),
+            onDismissed: (_) {
+              if (task.isActive) {
+                taskBloc.add(TaskDeleteRequested(task.id));
+              } else {
+                taskBloc.add(TaskActivateRequested(task.id));
+              }
             },
-            onLongPress: canManage
-                ? () => _showTaskActions(context, task)
-                : null,
+            child: TaskCard(
+              key: ValueKey(
+                'task-${task.id}-${task.status}-${task.priority}-${task.title}',
+              ),
+              task: task,
+              showAssignee: state.mode == TaskMode.all,
+              onTap: () async {
+                await Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => TaskDetailScreen(taskId: task.id),
+                  ),
+                );
+                taskBloc.add(const TasksRefreshRequested());
+              },
+              onLongPress: canManage
+                  ? () => _showTaskActions(context, task)
+                  : null,
+            ),
           );
         },
       ),
     );
   }
 
-  void _showTaskActions(BuildContext context, task) {
+  void _showTaskActions(BuildContext context, Task task) {
+    final isInactive = !task.isActive;
     showModalBottomSheet(
       context: context,
       builder: (sheetCtx) => SafeArea(
@@ -366,27 +467,103 @@ class _TasksScreenState extends State<TasksScreen> {
               ),
             ),
             const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit task'),
-              onTap: () async {
-                Navigator.pop(sheetCtx);
-                await _openTaskForm(context, existing: task);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text(
-                'Delete task',
-                style: TextStyle(color: Colors.red),
+            if (isInactive)
+              ListTile(
+                leading: const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.green,
+                ),
+                title: const Text('Activate task'),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  if (!await _confirmTaskAction(context, task)) return;
+                  context.read<TaskBloc>().add(TaskActivateRequested(task.id));
+                },
+              )
+            else ...[
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit task'),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  await _openTaskForm(context, existing: task);
+                },
               ),
-              onTap: () {
-                Navigator.pop(sheetCtx);
-                context.read<TaskBloc>().add(TaskDeleteRequested(task.id));
-              },
-            ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Delete task',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  if (!await _confirmTaskAction(context, task)) return;
+                  context.read<TaskBloc>().add(TaskDeleteRequested(task.id));
+                },
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmTaskAction(BuildContext context, Task task) async {
+    final isActivate = !task.isActive;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isActivate ? 'Activate task?' : 'Delete task?'),
+        content: Text(
+          isActivate
+              ? 'This task will be moved back to active tasks.'
+              : 'This task will be moved to inactive tasks.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(isActivate ? 'Activate' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+}
+
+class _SwipeActionBackground extends StatelessWidget {
+  final bool isInactive;
+
+  const _SwipeActionBackground({required this.isInactive});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isInactive ? Colors.green : Colors.red;
+    final icon = isInactive ? Icons.check_circle_outline : Icons.delete_outline;
+    final label = isInactive ? 'Activate' : 'Delete';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }

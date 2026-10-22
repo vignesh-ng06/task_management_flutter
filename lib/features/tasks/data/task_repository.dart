@@ -8,21 +8,26 @@ class TaskRepository {
   TaskRepository(this._api);
 
   /// GET /tasks/me
-  Future<List<Task>> getMyTasks({TaskFilters? filters}) async {
+  Future<List<Task>> getMyTasks({
+    TaskFilters? filters,
+    int? page,
+    int? limit,
+  }) async {
     final q = <String, String>{};
     if (filters != null) {
       if (filters.status != null) q['status'] = filters.status!;
       if (filters.priority != null) q['priority'] = filters.priority!;
       if (filters.projectId != null) q['projectId'] = '${filters.projectId}';
       if (filters.search.isNotEmpty) q['search'] = filters.search;
+      if (filters.includeInactive) q['includeInactive'] = 'true';
       // Note: assignedTo is intentionally ignored — /tasks/me is always "me"
     }
+    if (page != null) q['page'] = '$page';
+    if (limit != null) q['limit'] = '$limit';
 
     final query = q.isEmpty
         ? ''
-        : '?${q.entries
-                  .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-                  .join('&')}';
+        : '?${q.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
 
     final data = await _api.get('/tasks/me$query');
     final list = (data['data'] as List).cast<Map<String, dynamic>>();
@@ -162,8 +167,23 @@ class TaskRepository {
     await _api.delete('/tasks/delete/$id');
   }
 
-  Future<List<Task>> listTasks({TaskFilters? filters}) async {
+  /// PATCH /tasks/activate/:id
+  Future<void> activateTask(int id) async {
+    await _api.patch('/tasks/activate/$id', {});
+  }
+
+  Future<List<Task>> listTasks({
+    TaskFilters? filters,
+    bool includeInactive = false,
+    int page = 1,
+    int limit = 20,
+  }) async {
     final q = <String, String>{};
+    if (includeInactive || (filters?.includeInactive ?? false)) {
+      q['includeInactive'] = 'true';
+    }
+    q['page'] = '$page';
+    q['limit'] = '$limit';
     if (filters != null) {
       if (filters.status != null) q['status'] = filters.status!;
       if (filters.priority != null) q['priority'] = filters.priority!;
@@ -174,9 +194,7 @@ class TaskRepository {
 
     final query = q.isEmpty
         ? ''
-        : '?${q.entries
-                  .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-                  .join('&')}';
+        : '?${q.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
 
     final data = await _api.get('/tasks/getAllTasks$query');
     final list = (data['data'] as List).cast<Map<String, dynamic>>();

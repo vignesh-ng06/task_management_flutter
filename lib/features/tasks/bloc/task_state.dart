@@ -1,16 +1,20 @@
 import 'package:equatable/equatable.dart';
+
 import '../data/models/task_model.dart';
 
 enum TaskListStatus { initial, loading, loaded, error }
+
 enum TaskMode { mine, all }
+
 enum TaskMutationStatus { idle, creating, updating, succeeded, failed }
 
 class TaskFilters extends Equatable {
-  final String? status;      // null = all
-  final String? priority;    // 'HIGH' | 'MEDIUM' | 'LOW' | null
+  final String? status; // null = all
+  final String? priority; // 'HIGH' | 'MEDIUM' | 'LOW' | null
   final int? projectId;
   final int? assignedTo;
   final String search;
+  final bool includeInactive;
 
   const TaskFilters({
     this.status,
@@ -18,6 +22,7 @@ class TaskFilters extends Equatable {
     this.projectId,
     this.assignedTo,
     this.search = '',
+    this.includeInactive = false,
   });
 
   bool get isEmpty =>
@@ -25,7 +30,8 @@ class TaskFilters extends Equatable {
       priority == null &&
       projectId == null &&
       assignedTo == null &&
-      search.isEmpty;
+      search.isEmpty &&
+      !includeInactive;
 
   TaskFilters copyWith({
     String? status,
@@ -37,6 +43,7 @@ class TaskFilters extends Equatable {
     bool clearPriority = false,
     bool clearProject = false,
     bool clearAssignee = false,
+    bool? includeInactive,
   }) {
     return TaskFilters(
       status: clearStatus ? null : (status ?? this.status),
@@ -44,11 +51,19 @@ class TaskFilters extends Equatable {
       projectId: clearProject ? null : (projectId ?? this.projectId),
       assignedTo: clearAssignee ? null : (assignedTo ?? this.assignedTo),
       search: search ?? this.search,
+      includeInactive: includeInactive ?? this.includeInactive,
     );
   }
 
   @override
-  List<Object?> get props => [status, priority, projectId, assignedTo, search];
+  List<Object?> get props => [
+    status,
+    priority,
+    projectId,
+    assignedTo,
+    search,
+    includeInactive,
+  ];
 }
 
 class TaskState extends Equatable {
