@@ -69,6 +69,30 @@ class _ProjectsViewState extends State<_ProjectsView> {
     _requestProjectsLoad(context);
   }
 
+  Widget _buildAppliedFilterChip() {
+    if (_filter == _ProjectFilter.all) return const SizedBox.shrink();
+
+    final label = switch (_filter) {
+      _ProjectFilter.active => 'Active projects',
+      _ProjectFilter.inactive => 'Inactive projects',
+      _ProjectFilter.withTasks => 'Projects with tasks',
+      _ProjectFilter.withoutTasks => 'Projects without tasks',
+      _ProjectFilter.all => '',
+    };
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Chip(
+          label: Text(label),
+          visualDensity: VisualDensity.compact,
+          onDeleted: () => _onFilterChanged(context, _ProjectFilter.all),
+        ),
+      ),
+    );
+  }
+
   List<Project> _visibleProjects(List<Project> projects) {
     final query = _searchQuery.trim().toLowerCase();
     return projects.where((project) {
@@ -272,6 +296,7 @@ class _ProjectsViewState extends State<_ProjectsView> {
                   },
                   onFilterChanged: (value) => _onFilterChanged(context, value),
                 ),
+                _buildAppliedFilterChip(),
                 Expanded(
                   child: visibleProjects.isEmpty
                       ? SingleChildScrollView(
@@ -300,7 +325,7 @@ class _ProjectsViewState extends State<_ProjectsView> {
                           itemBuilder: (_, i) {
                             final project = visibleProjects[i];
                             final projectBloc = context.read<ProjectBloc>();
-                            return _ProjectCard(
+                            final card = _ProjectCard(
                               key: ValueKey(
                                 'proj-${project.id}-${project.name}-${project.description}',
                               ),
@@ -311,6 +336,7 @@ class _ProjectsViewState extends State<_ProjectsView> {
                                   MaterialPageRoute<void>(
                                     builder: (_) => ProjectDetailScreen(
                                       projectId: project.id,
+                                      initialProject: project,
                                     ),
                                   ),
                                 );
@@ -325,6 +351,8 @@ class _ProjectsViewState extends State<_ProjectsView> {
                                   ? () => _showActions(context, project)
                                   : null,
                             );
+
+                            return card;
                           },
                         ),
                 ),
@@ -343,42 +371,77 @@ class _ProjectsViewState extends State<_ProjectsView> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit project'),
-              onTap: () {
-                Navigator.pop(sheetCtx);
-                showProjectFormSheet(context, existing: project);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text(
-                'Delete project',
-                style: TextStyle(color: Colors.red),
+            if (!project.isActive)
+              ListTile(
+                leading: const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.green,
+                ),
+                title: const Text('Activate project'),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  if (await _confirmActivate(context, project) &&
+                      context.mounted) {
+                    context.read<ProjectBloc>().add(
+                      ProjectActivateRequested(project.id),
+                    );
+                  }
+                },
+              )
+            else ...[
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit project'),
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  showProjectFormSheet(context, existing: project);
+                },
               ),
-              onTap: () {
-                Navigator.pop(sheetCtx);
-                _confirmDelete(context, project);
-              },
-            ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Delete project',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  await _confirmDelete(context, project);
+                },
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  void _confirmDelete(BuildContext context, Project project) {
-    showDialog(
+  Future<bool> _confirmDelete(BuildContext context, Project project) async {
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: const Text('Delete project?'),
-        content: Text(
-          '"${project.name}" will be moved to inactive. Tasks will not be deleted.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '"${project.name}" will be moved to inactive. Tasks will not be deleted.',
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Reason (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
+            onPressed: () => Navigator.pop(dialogCtx, false),
             child: const Text('Cancel'),
           ),
           TextButton(
@@ -393,6 +456,31 @@ class _ProjectsViewState extends State<_ProjectsView> {
         ],
       ),
     );
+    reasonController.dispose();
+    return confirmed == true;
+  }
+
+  Future<bool> _confirmActivate(BuildContext context, Project project) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Activate project?'),
+        content: Text(
+          '"${project.name}" will be moved back to active projects.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Activate'),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
   }
 }
 
@@ -455,13 +543,9 @@ class _ProjectSearchBar extends StatelessWidget {
           const SizedBox(width: 8),
           PopupMenuButton<_ProjectFilter>(
             tooltip: 'Filter projects',
-            initialValue: filter,
+            initialValue: filter == _ProjectFilter.all ? null : filter,
             onSelected: onFilterChanged,
             itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: _ProjectFilter.all,
-                child: Text('All projects'),
-              ),
               PopupMenuItem(
                 value: _ProjectFilter.active,
                 child: Text('Active projects'),
@@ -553,10 +637,18 @@ class _ProjectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isInactive = !project.isActive;
     return Material(
-      color: isDark ? colors.surfaceContainerLow : Colors.white,
-      elevation: 1,
-      borderRadius: BorderRadius.circular(16),
+      color: isInactive
+          ? (isDark ? colors.surfaceContainerHigh : const Color(0xFFF1F5F9))
+          : (isDark ? colors.surfaceContainerLow : Colors.white),
+      elevation: isInactive ? 0 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isInactive
+            ? BorderSide(color: colors.outlineVariant)
+            : BorderSide.none,
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
@@ -569,10 +661,16 @@ class _ProjectCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.indigo.withValues(alpha: 0.1),
+                  color: (isInactive ? Colors.grey : Colors.indigo).withValues(
+                    alpha: 0.1,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.folder, color: Colors.indigo, size: 18),
+                child: Icon(
+                  Icons.folder,
+                  color: isInactive ? Colors.grey : Colors.indigo,
+                  size: 18,
+                ),
               ),
               const SizedBox(height: 10),
               Text(
@@ -584,6 +682,17 @@ class _ProjectCard extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              if (isInactive) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Inactive · View only',
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
               const SizedBox(height: 4),
               if (project.description != null &&
                   project.description!.isNotEmpty)

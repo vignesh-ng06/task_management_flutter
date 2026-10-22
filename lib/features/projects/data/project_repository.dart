@@ -55,7 +55,12 @@ class ProjectRepository {
     await _api.delete('/projects/delete/$id');
   }
 
-//New methods for member management
+  /// PATCH /projects/activate/:id
+  Future<void> activateProject(int id) async {
+    await _api.patch('/projects/activate/$id', {});
+  }
+
+  //New methods for member management
 
   Future<Project> addMembers(int projectId, List<int> userIds) async {
     final data = await _api.post('/projects/$projectId/members', {

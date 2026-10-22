@@ -57,7 +57,12 @@ class _ProjectFormSheetState extends State<_ProjectFormSheet> {
     if (isEdit) {
       _nameCtrl.text = widget.existing!.name;
       _descCtrl.text = widget.existing!.description ?? '';
-      _selectedMemberIds.addAll(widget.existing!.members.map((m) => m.id));
+      final activeUserIds = widget.allUsers.map((user) => user.id).toSet();
+      _selectedMemberIds.addAll(
+        widget.existing!.members
+            .map((member) => member.id)
+            .where(activeUserIds.contains),
+      );
     }
   }
 
@@ -279,11 +284,14 @@ class _ProjectFormSheetState extends State<_ProjectFormSheet> {
                             spacing: 6,
                             runSpacing: 6,
                             children: _selectedMemberIds.map((id) {
-                              final u = widget.allUsers.firstWhere(
-                                (u) => u.id == id,
-                              );
+                              final matchingUsers = widget.allUsers
+                                  .where((u) => u.id == id)
+                                  .toList();
+                              final u = matchingUsers.isEmpty
+                                  ? null
+                                  : matchingUsers.first;
                               return Chip(
-                                label: Text(u.displayName),
+                                label: Text(u?.displayName ?? 'User $id'),
                                 onDeleted: () => setState(
                                   () => _selectedMemberIds.remove(id),
                                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../../core/api/api_client.dart';
 import '../data/project_repository.dart';
 import 'project_event.dart';
@@ -12,29 +13,33 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     on<ProjectCreateRequested>(_onCreate);
     on<ProjectUpdateRequested>(_onUpdate);
     on<ProjectDeleteRequested>(_onDelete);
+    on<ProjectActivateRequested>(_onActivate);
     on<ProjectMembersUpdateRequested>(_onMembersUpdate);
-
   }
 
   Future<void> _onLoad(
     ProjectsLoadRequested event,
     Emitter<ProjectState> emit,
   ) async {
-    emit(state.copyWith(status: ProjectListStatus.loading, clearMessages: true));
+    emit(
+      state.copyWith(status: ProjectListStatus.loading, clearMessages: true),
+    );
     try {
-      final projects =
-          await _repo.listProjects(includeInactive: event.includeInactive);
-      emit(state.copyWith(
-        status: ProjectListStatus.loaded,
-        projects: projects,
-      ));
+      final projects = await _repo.listProjects(
+        includeInactive: event.includeInactive,
+      );
+      emit(
+        state.copyWith(status: ProjectListStatus.loaded, projects: projects),
+      );
     } on ApiException catch (e) {
       emit(state.copyWith(status: ProjectListStatus.error, error: e.message));
     } catch (_) {
-      emit(state.copyWith(
-        status: ProjectListStatus.error,
-        error: 'Failed to load projects',
-      ));
+      emit(
+        state.copyWith(
+          status: ProjectListStatus.error,
+          error: 'Failed to load projects',
+        ),
+      );
     }
   }
 
@@ -50,10 +55,12 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         memberIds: event.memberIds,
       );
       // Prepend so it shows at the top
-      emit(state.copyWith(
-        projects: [project, ...state.projects],
-        successMessage: 'Project created',
-      ));
+      emit(
+        state.copyWith(
+          projects: [project, ...state.projects],
+          successMessage: 'Project created',
+        ),
+      );
     } on ApiException catch (e) {
       emit(state.copyWith(error: e.message));
     }
@@ -84,14 +91,11 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         description: event.description,
         memberIds: event.memberIds,
       );
-      final merged = serverProject.copyWith(
-        taskCount: original.taskCount,
-      );
+      final merged = serverProject.copyWith(taskCount: original.taskCount);
       final confirmed = [...state.projects]..[index] = merged;
-      emit(state.copyWith(
-        projects: confirmed,
-        successMessage: 'Project updated',
-      ));
+      emit(
+        state.copyWith(projects: confirmed, successMessage: 'Project updated'),
+      );
     } on ApiException catch (e) {
       final rolledBack = [...state.projects]..[index] = original;
       emit(state.copyWith(projects: rolledBack, error: e.message));
@@ -122,8 +126,29 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     }
   }
 
+  Future<void> _onActivate(
+    ProjectActivateRequested event,
+    Emitter<ProjectState> emit,
+  ) async {
+    final index = state.projects.indexWhere(
+      (project) => project.id == event.id,
+    );
+    if (index == -1) return;
+    final original = state.projects[index];
 
-Future<void> _onMembersUpdate(
+    try {
+      await _repo.activateProject(event.id);
+      final activated = original.copyWith(isActive: true);
+      final updated = [...state.projects]..[index] = activated;
+      emit(
+        state.copyWith(projects: updated, successMessage: 'Project activated'),
+      );
+    } on ApiException catch (e) {
+      emit(state.copyWith(error: e.message));
+    }
+  }
+
+  Future<void> _onMembersUpdate(
     ProjectMembersUpdateRequested event,
     Emitter<ProjectState> emit,
   ) async {
@@ -146,6 +171,4 @@ Future<void> _onMembersUpdate(
       emit(state.copyWith(error: e.message));
     }
   }
-
-
 }

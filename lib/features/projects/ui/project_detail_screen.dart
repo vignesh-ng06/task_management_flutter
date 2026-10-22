@@ -5,6 +5,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/widgets/app_header.dart';
 import '../../../core/widgets/app_feedback.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/data/user_model.dart';
 import '../../tasks/bloc/task_bloc.dart';
 import '../../tasks/bloc/task_event.dart';
 import '../../tasks/data/task_repository.dart';
@@ -13,13 +14,20 @@ import '../../tasks/bloc/task_state.dart';
 import '../../tasks/ui/task_detail_screen.dart';
 import '../../tasks/ui/task_form_sheet.dart';
 import '../../tasks/ui/widgets/task_card.dart';
+import '../../users/data/user_repository.dart';
 import '../data/models/project.dart';
 import '../data/project_repository.dart';
 import 'project_members_sheet.dart';
 
 class ProjectDetailScreen extends StatefulWidget {
   final int projectId;
-  const ProjectDetailScreen({super.key, required this.projectId});
+  final Project? initialProject;
+
+  const ProjectDetailScreen({
+    super.key,
+    required this.projectId,
+    this.initialProject,
+  });
 
   @override
   State<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
@@ -27,6 +35,7 @@ class ProjectDetailScreen extends StatefulWidget {
 
 class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   late Future<Project> _future;
+  late Future<Set<int>> _activeMemberIdsFuture;
   final _scrollController = ScrollController();
   final _taskSearchController = TextEditingController();
   List<Task> _tasks = const [];
@@ -41,10 +50,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _taskFilters = TaskFilters(projectId: widget.projectId);
+    _taskFilters = TaskFilters(
+      projectId: widget.projectId,
+      includeInactive: widget.initialProject?.isActive == false,
+    );
     _load();
     _scrollController.addListener(_loadMoreWhenNeeded);
-    _loadTasks(reset: true);
+    _loadTasksForProject();
   }
 
   @override
@@ -57,12 +69,50 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   void _load() {
-    _future = context.read<ProjectRepository>().getProject(widget.projectId);
+    _future = _loadProject();
+    _activeMemberIdsFuture = context
+        .read<UserRepository>()
+        .listUsers(isActive: true)
+        .then((users) => users.map((user) => user.id).toSet());
+  }
+
+  Future<Project> _loadProject() async {
+    try {
+      return await context.read<ProjectRepository>().getProject(
+        widget.projectId,
+      );
+    } catch (_) {
+      final fallback = widget.initialProject;
+      if (fallback != null) return fallback;
+      rethrow;
+    }
   }
 
   Future<void> _refresh() async {
     setState(_load);
-    await Future.wait([_future, _loadTasks(reset: true)]);
+    await _loadTasksForProject();
+  }
+
+  Future<void> _loadTasksForProject() async {
+    try {
+      final project = await _future;
+      final includeInactive = !project.isActive;
+
+      if (_taskFilters.includeInactive != includeInactive) {
+        final nextFilters = _taskFilters.copyWith(
+          includeInactive: includeInactive,
+        );
+        if (mounted) {
+          setState(() => _taskFilters = nextFilters);
+        } else {
+          _taskFilters = nextFilters;
+        }
+      }
+
+      await _loadTasks(reset: true);
+    } catch (_) {
+      // The project FutureBuilder displays the project loading error.
+    }
   }
 
   Future<void> _loadTasks({required bool reset}) async {
@@ -196,7 +246,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppHeader(section: 'Project details'),
-      floatingActionButton: _canManage(context)
+      floatingActionButton:
+          _canManage(context) && widget.initialProject?.isActive != false
           ? FloatingActionButton.extended(
               heroTag: 'project-detail-new-task',
               onPressed: () =>
@@ -260,10 +311,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                 const SizedBox(height: 16),
                 _ProjectMembersRow(
                   project: project,
-                  onManage: () async {
-                    await showProjectMembersSheet(context, project);
-                    _refresh();
-                  },
+                  activeMemberIdsFuture: _activeMemberIdsFuture,
+                  onManage: project.isActive
+                      ? () async {
+                          await showProjectMembersSheet(context, project);
+                          _refresh();
+                        }
+                      : null,
                 ),
 
                 const SizedBox(height: 20),
@@ -430,7 +484,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                     : const Color(0xFF64748B),
                               ),
                             ),
-                            if (_canManage(context)) ...[
+                            if (_canManage(context) && project.isActive) ...[
                               const SizedBox(height: 16),
                               FilledButton.icon(
                                 onPressed: () =>
@@ -446,6 +500,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   )
                 else ...[
                   ...tasks.map((task) {
+                    final canManageProject =
+                        project.isActive && _canManage(context);
                     final card = TaskCard(
                       task: task,
                       onTap: () {
@@ -456,12 +512,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           ),
                         ).then((_) => _refresh());
                       },
-                      onLongPress: _canManage(context)
+                      onLongPress: canManageProject
                           ? () => _showTaskActions(context, task)
                           : null,
                     );
 
-                    if (!_canManage(context)) return card;
+                    if (!canManageProject) return card;
 
                     return Dismissible(
                       key: ValueKey(
@@ -813,12 +869,33 @@ class _ProjectTaskFilterSheetState extends State<_ProjectTaskFilterSheet> {
 
 class _ProjectMembersRow extends StatelessWidget {
   final Project project;
-  final VoidCallback onManage;
-  const _ProjectMembersRow({required this.project, required this.onManage});
+  final Future<Set<int>> activeMemberIdsFuture;
+  final VoidCallback? onManage;
+  const _ProjectMembersRow({
+    required this.project,
+    required this.activeMemberIdsFuture,
+    required this.onManage,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final members = project.members;
+    return FutureBuilder<Set<int>>(
+      future: activeMemberIdsFuture,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox(height: 28);
+        }
+
+        final activeMemberIds = snapshot.data!;
+        final members = project.members
+            .where((member) => activeMemberIds.contains(member.id))
+            .toList();
+        return _buildMembersRow(context, members);
+      },
+    );
+  }
+
+  Widget _buildMembersRow(BuildContext context, List<User> members) {
     final colors = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
@@ -878,12 +955,14 @@ class _ProjectMembersRow extends StatelessWidget {
               ),
             ),
           ),
-        const Spacer(),
-        TextButton.icon(
-          onPressed: onManage,
-          icon: const Icon(Icons.settings, size: 16),
-          label: const Text('Manage'),
-        ),
+        if (onManage != null) ...[
+          const Spacer(),
+          TextButton.icon(
+            onPressed: onManage,
+            icon: const Icon(Icons.settings, size: 16),
+            label: const Text('Manage'),
+          ),
+        ],
       ],
     );
   }

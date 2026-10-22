@@ -42,7 +42,11 @@ class _ProjectMembersSheetState extends State<_ProjectMembersSheet> {
   @override
   void initState() {
     super.initState();
-    _selected = widget.project.members.map((m) => m.id).toSet();
+    final activeUserIds = widget.allUsers.map((user) => user.id).toSet();
+    _selected = widget.project.members
+        .map((member) => member.id)
+        .where(activeUserIds.contains)
+        .toSet();
   }
 
   void _save() {
