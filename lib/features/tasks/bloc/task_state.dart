@@ -72,6 +72,10 @@ class TaskState extends Equatable {
   final TaskMode mode;
   final TaskFilters filters;
   final String? error;
+  final int? total;
+  final int page;
+  final bool hasMore;
+  final bool isLoadingMore;
   final TaskMutationStatus mutationStatus;
   final String? mutationMessage;
 
@@ -81,6 +85,10 @@ class TaskState extends Equatable {
     this.mode = TaskMode.mine,
     this.filters = const TaskFilters(),
     this.error,
+    this.total,
+    this.page = 0,
+    this.hasMore = true,
+    this.isLoadingMore = false,
     this.mutationStatus = TaskMutationStatus.idle,
     this.mutationMessage,
   });
@@ -91,9 +99,14 @@ class TaskState extends Equatable {
     TaskMode? mode,
     TaskFilters? filters,
     String? error,
+    int? total,
+    int? page,
+    bool? hasMore,
+    bool? isLoadingMore,
     TaskMutationStatus? mutationStatus,
     String? mutationMessage,
     bool clearError = false,
+    bool clearTotal = false,
     bool clearMutationMessage = false,
   }) {
     return TaskState(
@@ -102,6 +115,10 @@ class TaskState extends Equatable {
       mode: mode ?? this.mode,
       filters: filters ?? this.filters,
       error: clearError ? null : (error ?? this.error),
+      total: clearTotal ? null : (total ?? this.total),
+      page: page ?? this.page,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       mutationStatus: mutationStatus ?? this.mutationStatus,
       mutationMessage: clearMutationMessage
           ? null
@@ -116,6 +133,10 @@ class TaskState extends Equatable {
     mode,
     filters,
     error,
+    total,
+    page,
+    hasMore,
+    isLoadingMore,
     mutationStatus,
     mutationMessage,
   ];

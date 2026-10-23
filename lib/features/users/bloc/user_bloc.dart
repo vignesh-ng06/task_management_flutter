@@ -8,12 +8,15 @@ import '../../auth/data/user_model.dart';
 
 class UserBloc extends Bloc<UserEvent, UserState> {
   final UserRepository _repo;
+  static const _pageSize = 20;
 
   UserBloc(this._repo) : super(const UserState()) {
     on<UsersLoadRequested>(_onLoad);
+    on<UsersLoadMoreRequested>(_onLoadMore);
     on<UserCreateRequested>(_onCreate);
     on<UserUpdateRequested>(_onUpdate);
     on<UserDeactivateRequested>(_onDeactivate);
+    on<UserActivateRequested>(_onActivate);
     on<UserFilterChanged>((event, emit) {
       emit(state.copyWith(roleFilter: event.role));
     });
@@ -29,14 +32,28 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         status: UserListStatus.loading,
         includeInactive: event.includeInactive,
         users: changingList ? [] : null,
+        page: 0,
+        hasMore: true,
+        isLoadingMore: false,
+        clearTotal: true,
         clearMessages: true,
       ),
     );
     try {
-      final users = await _repo.listUsers(
+      final result = await _repo.listUsersPage(
         isActive: !event.includeInactive,
+        page: 1,
+        limit: _pageSize,
       );
-      emit(state.copyWith(status: UserListStatus.loaded, users: users));
+      emit(
+        state.copyWith(
+          status: UserListStatus.loaded,
+          users: result.users,
+          total: result.total,
+          page: 1,
+          hasMore: _hasMore(result, page: 1),
+        ),
+      );
     } on ApiException catch (e) {
       emit(state.copyWith(status: UserListStatus.error, error: e.message));
     } catch (_) {
@@ -48,6 +65,50 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       );
     }
   }
+
+  Future<void> _onLoadMore(
+    UsersLoadMoreRequested event,
+    Emitter<UserState> emit,
+  ) async {
+    if (state.status == UserListStatus.loading ||
+        state.isLoadingMore ||
+        !state.hasMore) {
+      return;
+    }
+
+    final nextPage = state.page + 1;
+    emit(state.copyWith(isLoadingMore: true, clearMessages: true));
+    try {
+      final result = await _repo.listUsersPage(
+        isActive: !state.includeInactive,
+        page: nextPage,
+        limit: _pageSize,
+      );
+      final merged = [...state.users, ...result.users];
+      emit(
+        state.copyWith(
+          status: UserListStatus.loaded,
+          users: merged,
+          total: result.total,
+          page: nextPage,
+          hasMore: _hasMore(result, page: nextPage),
+          isLoadingMore: false,
+        ),
+      );
+    } on ApiException catch (e) {
+      emit(state.copyWith(isLoadingMore: false, error: e.message));
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isLoadingMore: false,
+          error: 'Failed to load more users',
+        ),
+      );
+    }
+  }
+
+  bool _hasMore(UserPage result, {required int page}) =>
+      page < result.totalPages;
 
   Future<void> _onCreate(
     UserCreateRequested event,
@@ -125,23 +186,33 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       emit(
         state.copyWith(
           users: state.includeInactive
-              ? state.users
-                    .map(
-                      (u) => u.id == event.id
-                          ? User(
-                              id: u.id,
-                              email: u.email,
-                              name: u.name,
-                              role: u.role,
-                              companyId: u.companyId,
-                              isActive: false,
-                              createdAt: u.createdAt,
-                            )
-                          : u,
-                    )
-                    .toList()
+              ? state.users.map((u) {
+                  return u.id == event.id ? u.copyWith(isActive: false) : u;
+                }).toList()
               : state.users.where((u) => u.id != event.id).toList(),
           successMessage: 'User deactivated',
+        ),
+      );
+    } on ApiException catch (e) {
+      emit(state.copyWith(error: e.message));
+    }
+  }
+
+  Future<void> _onActivate(
+    UserActivateRequested event,
+    Emitter<UserState> emit,
+  ) async {
+    emit(state.copyWith(clearMessages: true));
+    try {
+      await _repo.activateUser(event.id);
+      emit(
+        state.copyWith(
+          users: state.includeInactive
+              ? state.users.where((u) => u.id != event.id).toList()
+              : state.users.map((u) {
+                  return u.id == event.id ? u.copyWith(isActive: true) : u;
+                }).toList(),
+          successMessage: 'User activated',
         ),
       );
     } on ApiException catch (e) {

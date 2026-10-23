@@ -3,6 +3,13 @@ import 'models/task_model.dart';
 import 'models/comment.dart';
 import '../bloc/task_state.dart';
 
+class TaskPage {
+  final List<Task> tasks;
+  final int? total;
+
+  const TaskPage({required this.tasks, this.total});
+}
+
 class TaskRepository {
   final ApiClient _api;
   TaskRepository(this._api);
@@ -13,6 +20,19 @@ class TaskRepository {
     int? page,
     int? limit,
   }) async {
+    final result = await getMyTasksPage(
+      filters: filters,
+      page: page ?? 1,
+      limit: limit ?? 20,
+    );
+    return result.tasks;
+  }
+
+  Future<TaskPage> getMyTasksPage({
+    TaskFilters? filters,
+    int page = 1,
+    int limit = 20,
+  }) async {
     final q = <String, String>{};
     if (filters != null) {
       if (filters.status != null) q['status'] = filters.status!;
@@ -22,16 +42,14 @@ class TaskRepository {
       if (filters.includeInactive) q['includeInactive'] = 'true';
       // Note: assignedTo is intentionally ignored — /tasks/me is always "me"
     }
-    if (page != null) q['page'] = '$page';
-    if (limit != null) q['limit'] = '$limit';
+    q['page'] = '$page';
+    q['limit'] = '$limit';
 
     final query = q.isEmpty
         ? ''
         : '?${q.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
 
-    final data = await _api.get('/tasks/me$query');
-    final list = (data['data'] as List).cast<Map<String, dynamic>>();
-    return list.map(Task.fromJson).toList();
+    return _parsePage(await _api.get('/tasks/me$query'));
   }
 
   /// GET /tasks/:id
@@ -178,6 +196,21 @@ class TaskRepository {
     int page = 1,
     int limit = 20,
   }) async {
+    final result = await listTasksPage(
+      filters: filters,
+      includeInactive: includeInactive,
+      page: page,
+      limit: limit,
+    );
+    return result.tasks;
+  }
+
+  Future<TaskPage> listTasksPage({
+    TaskFilters? filters,
+    bool includeInactive = false,
+    int page = 1,
+    int limit = 20,
+  }) async {
     final q = <String, String>{};
     if (includeInactive || (filters?.includeInactive ?? false)) {
       q['includeInactive'] = 'true';
@@ -196,10 +229,41 @@ class TaskRepository {
         ? ''
         : '?${q.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
 
-    final data = await _api.get('/tasks/getAllTasks$query');
-    final list = (data['data'] as List).cast<Map<String, dynamic>>();
-    return list.map(Task.fromJson).toList();
+    return _parsePage(await _api.get('/tasks/getAllTasks$query'));
   }
+
+  TaskPage _parsePage(dynamic response) {
+    if (response is! Map) {
+      throw const FormatException('Invalid paginated tasks response');
+    }
+
+    final root = Map<String, dynamic>.from(response);
+    dynamic payload = root['data'];
+    int? total = _readInt(root['total']) ?? _readInt(root['count']);
+
+    if (payload is Map) {
+      final payloadMap = Map<String, dynamic>.from(payload);
+      total ??= _readInt(payloadMap['total']) ?? _readInt(payloadMap['count']);
+      total ??= _readNestedTotal(payloadMap['pagination']);
+      total ??= _readNestedTotal(payloadMap['meta']);
+      payload =
+          payloadMap['items'] ?? payloadMap['tasks'] ?? payloadMap['data'];
+    }
+
+    total ??= _readNestedTotal(root['pagination']);
+    total ??= _readNestedTotal(root['meta']);
+
+    final list = (payload is List ? payload : const [])
+        .cast<Map<String, dynamic>>();
+    return TaskPage(tasks: list.map(Task.fromJson).toList(), total: total);
+  }
+
+  int? _readNestedTotal(dynamic value) {
+    if (value is Map) return _readInt(value['total']);
+    return null;
+  }
+
+  int? _readInt(dynamic value) => value is num ? value.toInt() : null;
 
   Future<Comment> updateComment(int commentId, String message) async {
     final data = await _api.put('/comments/update/$commentId', {

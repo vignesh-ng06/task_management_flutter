@@ -75,18 +75,149 @@ class _UsersView extends StatefulWidget {
 
 class _UsersViewState extends State<_UsersView> {
   final TextEditingController _searchCtrl = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _query = '';
+
+  static const _loadMoreThreshold = 400.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients ||
+        _scrollController.position.extentAfter > _loadMoreThreshold) {
+      return;
+    }
+    final bloc = context.read<UserBloc>();
+    if (bloc.state.hasMore && !bloc.state.isLoadingMore) {
+      bloc.add(const UsersLoadMoreRequested());
+    }
   }
 
   void _reload(BuildContext context) {
     final includeInactive = context.read<UserBloc>().state.includeInactive;
     context.read<UserBloc>().add(
       UsersLoadRequested(includeInactive: includeInactive),
+    );
+  }
+
+  void _editUser(User user) {
+    showUserFormSheet(context, existing: user);
+  }
+
+  Future<void> _deactivateUser(User user) async {
+    final reasonController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Deactivate user?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Deactivate ${user.displayName}?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Reason (optional)',
+                hintText: 'Enter a reason for the UI record',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Deactivate'),
+          ),
+        ],
+      ),
+    );
+    reasonController.dispose();
+    if (confirmed == true && mounted) {
+      context.read<UserBloc>().add(UserDeactivateRequested(user.id));
+    }
+  }
+
+  Future<void> _activateUser(User user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Activate user?'),
+        content: Text('Activate ${user.displayName}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Activate'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      context.read<UserBloc>().add(UserActivateRequested(user.id));
+    }
+  }
+
+  void _showUserActions(User user) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (user.isActive)
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit user'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _editUser(user);
+                },
+              ),
+            ListTile(
+              leading: Icon(
+                user.isActive
+                    ? Icons.person_off_outlined
+                    : Icons.person_add_alt_1_outlined,
+                color: user.isActive ? Colors.red : _kSuccess,
+              ),
+              title: Text(user.isActive ? 'Deactivate user' : 'Activate user'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                if (user.isActive) {
+                  _deactivateUser(user);
+                } else {
+                  _activateUser(user);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -325,18 +456,46 @@ class _UsersViewState extends State<_UsersView> {
                           );
                         },
                         child: ListView.separated(
+                          controller: _scrollController,
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
-                          itemCount: displayList.length,
+                          itemCount:
+                              displayList.length +
+                              ((state.isLoadingMore ||
+                                      (state.page > 1 && !state.hasMore))
+                                  ? 1
+                                  : 0),
                           separatorBuilder: (_, _) =>
                               const SizedBox(height: 10),
                           itemBuilder: (_, i) {
+                            if (i == displayList.length) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 20,
+                                ),
+                                child: Center(
+                                  child: state.isLoadingMore
+                                      ? const CircularProgressIndicator()
+                                      : Text(
+                                          "You're all caught up",
+                                          style: TextStyle(
+                                            color: _mutedTextColor(context),
+                                          ),
+                                        ),
+                                ),
+                              );
+                            }
                             final user = displayList[i];
                             return _UserCard(
                               key: ValueKey(
                                 'user-${user.id}-${user.name}-${user.role}-${user.isActive}',
                               ),
                               user: user,
+                              onEdit: () => _editUser(user),
+                              onDelete: () => _deactivateUser(user),
+                              onActivate: () => _activateUser(user),
+                              onMore: () => _showUserActions(user),
+                              onLongPress: () => _showUserActions(user),
                             );
                           },
                         ),
@@ -542,125 +701,304 @@ class _FilterChip extends StatelessWidget {
 // ─────────────────────────────────────────────
 class _UserCard extends StatelessWidget {
   final User user;
-  const _UserCard({super.key, required this.user});
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onActivate;
+  final VoidCallback onMore;
+  final VoidCallback onLongPress;
+
+  const _UserCard({
+    super.key,
+    required this.user,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onActivate,
+    required this.onMore,
+    required this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
     final inactive = user.isActive == false;
     final color = _roleColor(user.role);
 
-    return Material(
-      color: _cardBackground(context),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
+    return _SwipeActionCard(
+      inactive: inactive,
+      onEdit: onEdit,
+      onPrimaryAction: inactive ? onActivate : onDelete,
+      onMore: onMore,
+      onLongPress: onLongPress,
+      child: Material(
+        color: _cardBackground(context),
         borderRadius: BorderRadius.circular(16),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => BlocProvider.value(
-              value: context.read<UserBloc>(),
-              child: UserDetailScreen(user: user),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onLongPress: onLongPress,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => BlocProvider.value(
+                value: context.read<UserBloc>(),
+                child: UserDetailScreen(user: user),
+              ),
             ),
           ),
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _borderColor(context)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Avatar with status dot
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: inactive
-                        ? Colors.grey.shade200
-                        : color.withValues(alpha: 0.12),
-                    child: Text(
-                      user.initials,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: inactive ? Colors.grey : color,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: -1,
-                    bottom: -1,
-                    child: Container(
-                      width: 13,
-                      height: 13,
-                      decoration: BoxDecoration(
-                        color: inactive ? _kTextLight : _kSuccess,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _cardBackground(context),
-                          width: 2,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _borderColor(context)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Avatar with status dot
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: inactive
+                          ? Colors.grey.shade200
+                          : color.withValues(alpha: 0.12),
+                      child: Text(
+                        user.initials,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: inactive ? Colors.grey : color,
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 14),
+                    Positioned(
+                      right: -1,
+                      bottom: -1,
+                      child: Container(
+                        width: 13,
+                        height: 13,
+                        decoration: BoxDecoration(
+                          color: inactive ? _kTextLight : _kSuccess,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _cardBackground(context),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 14),
 
-              // Name, email, badges
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // Name, email, badges
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: inactive
+                              ? _lightTextColor(context)
+                              : _isDark(context)
+                              ? Theme.of(context).colorScheme.onSurface
+                              : _kTextDark,
+                          decoration: inactive
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        user.email,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _mutedTextColor(context),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _Badge(label: user.role.toUpperCase(), color: color),
+                          if (inactive)
+                            const _Badge(label: 'INACTIVE', color: Colors.red),
+                          _ProjectsBadge(count: user.projectCount),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                Icon(Icons.chevron_right, color: _lightTextColor(context)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SwipeActionCard extends StatefulWidget {
+  final bool inactive;
+  final VoidCallback onEdit;
+  final VoidCallback onPrimaryAction;
+  final VoidCallback onMore;
+  final VoidCallback onLongPress;
+  final Widget child;
+
+  const _SwipeActionCard({
+    required this.inactive,
+    required this.onEdit,
+    required this.onPrimaryAction,
+    required this.onMore,
+    required this.onLongPress,
+    required this.child,
+  });
+
+  @override
+  State<_SwipeActionCard> createState() => _SwipeActionCardState();
+}
+
+class _SwipeActionCardState extends State<_SwipeActionCard> {
+  static const _activeActionsWidth = 180.0;
+  static const _inactiveActionsWidth = 72.0;
+  double _dragDistance = 0;
+  bool _revealed = false;
+
+  void _close() => setState(() {
+    _revealed = false;
+    _dragDistance = 0;
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final actionsWidth = widget.inactive
+        ? _inactiveActionsWidth
+        : _activeActionsWidth;
+    final primaryColor = widget.inactive ? _kSuccess : Colors.red;
+    final primaryIcon = widget.inactive
+        ? Icons.person_add_alt_1_outlined
+        : Icons.delete_outline;
+    final primaryLabel = widget.inactive ? 'Activate' : 'Delete';
+    final rightSwipeDistance = _dragDistance.clamp(0.0, 180.0);
+    final leftSwipeDistance = _dragDistance.clamp(-actionsWidth, 0.0);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
+        alignment: Alignment.centerRight,
+        children: [
+          if (rightSwipeDistance > 0)
+            Positioned.fill(
+              child: Container(
+                color: primaryColor.withValues(alpha: 0.12),
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Row(
                   children: [
+                    Icon(primaryIcon, color: primaryColor),
+                    const SizedBox(width: 8),
                     Text(
-                      user.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      primaryLabel,
                       style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: inactive
-                            ? _lightTextColor(context)
-                            : _isDark(context)
-                            ? Theme.of(context).colorScheme.onSurface
-                            : _kTextDark,
-                        decoration: inactive
-                            ? TextDecoration.lineThrough
-                            : null,
+                        color: primaryColor,
+                        fontWeight: FontWeight.w700,
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      user.email,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _mutedTextColor(context),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        _Badge(label: user.role.toUpperCase(), color: color),
-                        if (inactive)
-                          const _Badge(label: 'INACTIVE', color: Colors.red),
-                        _ProjectsBadge(count: user.projectCount),
-                      ],
                     ),
                   ],
                 ),
               ),
-
-              Icon(Icons.chevron_right, color: _lightTextColor(context)),
-            ],
+            ),
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: actionsWidth,
+                child: Container(
+                  color: _screenBackground(context),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (!widget.inactive) ...[
+                        IconButton(
+                          tooltip: 'Edit',
+                          onPressed: () {
+                            _close();
+                            widget.onEdit();
+                          },
+                          icon: const Icon(Icons.edit_outlined),
+                        ),
+                        IconButton(
+                          tooltip: 'More actions',
+                          onPressed: () {
+                            _close();
+                            widget.onMore();
+                          },
+                          icon: const Icon(Icons.more_horiz),
+                        ),
+                      ],
+                      IconButton(
+                        tooltip: primaryLabel,
+                        color: primaryColor,
+                        onPressed: () {
+                          _close();
+                          widget.onPrimaryAction();
+                        },
+                        icon: Icon(primaryIcon),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
+          IgnorePointer(
+            ignoring: _revealed,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: (_) => _dragDistance = 0,
+              onHorizontalDragUpdate: (details) {
+                _dragDistance += details.delta.dx;
+                setState(() {});
+              },
+              onHorizontalDragEnd: (_) {
+                if (_dragDistance < -35) {
+                  setState(() => _revealed = true);
+                } else if (_dragDistance > 70) {
+                  if (_revealed) {
+                    _close();
+                  } else {
+                    widget.onPrimaryAction();
+                  }
+                } else if (_revealed && _dragDistance > 0) {
+                  _close();
+                }
+                _dragDistance = 0;
+              },
+              onLongPress: widget.onLongPress,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                transform: Matrix4.translationValues(
+                  _revealed
+                      ? -actionsWidth
+                      : leftSwipeDistance + rightSwipeDistance,
+                  0,
+                  0,
+                ),
+                child: widget.child,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

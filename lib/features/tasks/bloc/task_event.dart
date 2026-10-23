@@ -16,6 +16,10 @@ class TasksRefreshRequested extends TaskEvent {
   const TasksRefreshRequested();
 }
 
+class TasksLoadMoreRequested extends TaskEvent {
+  const TasksLoadMoreRequested();
+}
+
 class TaskStatusUpdateRequested extends TaskEvent {
   final int taskId;
   final String newStatus;

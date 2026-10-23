@@ -9,11 +9,13 @@ import 'task_state.dart';
 
 class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final TaskRepository _repo;
+  static const _pageSize = 20;
   int? _currentUserId;
 
   TaskBloc(this._repo) : super(const TaskState()) {
     on<TasksLoadRequested>(_onLoad);
     on<TasksRefreshRequested>(_onLoad);
+    on<TasksLoadMoreRequested>(_onLoadMore);
     on<TaskModeChanged>(_onModeChange);
     on<TaskFiltersChanged>(_onFiltersChange);
     on<TaskFiltersCleared>(_onFiltersCleared);
@@ -27,12 +29,28 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   void setCurrentUserId(int id) => _currentUserId = id;
 
   Future<void> _fetchAndEmit(Emitter<TaskState> emit) async {
-    emit(state.copyWith(status: TaskListStatus.loading, clearError: true));
+    emit(
+      state.copyWith(
+        status: TaskListStatus.loading,
+        tasks: const [],
+        page: 0,
+        hasMore: true,
+        isLoadingMore: false,
+        clearError: true,
+        clearTotal: true,
+      ),
+    );
     try {
-      final tasks = state.mode == TaskMode.mine
-          ? await _repo.getMyTasks(filters: state.filters)
-          : await _repo.listTasks(filters: state.filters);
-      emit(state.copyWith(status: TaskListStatus.loaded, tasks: tasks));
+      final result = await _fetchPage(1);
+      emit(
+        state.copyWith(
+          status: TaskListStatus.loaded,
+          tasks: result.tasks,
+          total: result.total,
+          page: 1,
+          hasMore: _hasMore(result, result.tasks.length),
+        ),
+      );
     } on ApiException catch (e) {
       emit(state.copyWith(status: TaskListStatus.error, error: e.message));
     } catch (_) {
@@ -47,6 +65,63 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _onLoad(TaskEvent event, Emitter<TaskState> emit) =>
       _fetchAndEmit(emit);
+
+  Future<void> _onLoadMore(
+    TasksLoadMoreRequested event,
+    Emitter<TaskState> emit,
+  ) async {
+    if (state.status == TaskListStatus.loading ||
+        state.isLoadingMore ||
+        !state.hasMore) {
+      return;
+    }
+
+    final nextPage = state.page + 1;
+    emit(state.copyWith(isLoadingMore: true, clearError: true));
+    try {
+      final result = await _fetchPage(nextPage);
+      final merged = [...state.tasks, ...result.tasks];
+      final total = result.total ?? state.total;
+      emit(
+        state.copyWith(
+          status: TaskListStatus.loaded,
+          tasks: merged,
+          total: total,
+          page: nextPage,
+          hasMore: _hasMore(result, merged.length, total: total),
+          isLoadingMore: false,
+        ),
+      );
+    } on ApiException catch (e) {
+      emit(state.copyWith(isLoadingMore: false, error: e.message));
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isLoadingMore: false,
+          error: 'Failed to load more tasks',
+        ),
+      );
+    }
+  }
+
+  Future<TaskPage> _fetchPage(int page) {
+    return state.mode == TaskMode.mine
+        ? _repo.getMyTasksPage(
+            filters: state.filters,
+            page: page,
+            limit: _pageSize,
+          )
+        : _repo.listTasksPage(
+            filters: state.filters,
+            page: page,
+            limit: _pageSize,
+          );
+  }
+
+  bool _hasMore(TaskPage result, int loadedCount, {int? total}) {
+    if (total != null) return loadedCount < total;
+    return result.tasks.length == _pageSize;
+  }
 
   Future<void> _onModeChange(
     TaskModeChanged event,

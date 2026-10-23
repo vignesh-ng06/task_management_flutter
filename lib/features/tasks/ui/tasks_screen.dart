@@ -22,11 +22,35 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  static const _loadMoreThreshold = 400.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients ||
+        _scrollController.position.extentAfter > _loadMoreThreshold) {
+      return;
+    }
+
+    final bloc = context.read<TaskBloc>();
+    if (bloc.state.hasMore && !bloc.state.isLoadingMore) {
+      bloc.add(const TasksLoadMoreRequested());
+    }
   }
 
   bool _canManage(BuildContext context) {
@@ -402,9 +426,30 @@ class _TasksScreenState extends State<TasksScreen> {
         await Future.delayed(const Duration(milliseconds: 500));
       },
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.all(12),
-        itemCount: visibleTasks.length,
+        itemCount:
+            visibleTasks.length +
+            ((state.isLoadingMore || (state.page > 1 && !state.hasMore))
+                ? 1
+                : 0),
         itemBuilder: (context, i) {
+          if (i == visibleTasks.length) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: state.isLoadingMore
+                    ? const CircularProgressIndicator()
+                    : Text(
+                        "You're all caught up",
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+              ),
+            );
+          }
+
           final task = visibleTasks[i];
           final taskBloc = context.read<TaskBloc>();
           return Dismissible(

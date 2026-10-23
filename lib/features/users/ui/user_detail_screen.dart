@@ -102,12 +102,13 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
           appBar: AppHeader(
             section: 'User details',
             actions: [
-              IconButton(
-                tooltip: 'Edit user',
-                onPressed: () =>
-                    showUserFormSheet(context, existing: displayedUser),
-                icon: const Icon(Icons.edit_outlined),
-              ),
+              if (displayedUser.isActive)
+                IconButton(
+                  tooltip: 'Edit user',
+                  onPressed: () =>
+                      showUserFormSheet(context, existing: displayedUser),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
             ],
           ),
           body: FutureBuilder<UserDetails>(
@@ -246,15 +247,16 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: () =>
-                          showUserFormSheet(context, existing: detailUser),
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Edit user'),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
+                    if (detailUser.isActive)
+                      FilledButton.icon(
+                        onPressed: () =>
+                            showUserFormSheet(context, existing: detailUser),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Edit user'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               );
@@ -275,7 +277,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     industry: current.industry,
     website: current.website,
     companySize: current.companySize,
-    isActive: details.isActive,
+    // The users list is the source of truth for status here. The detail API
+    // may omit isActive, which User.fromJson would otherwise default to true.
+    isActive: current.isActive,
     createdAt: details.createdAt ?? current.createdAt,
     projects: current.projects,
     projectCount: details.projectCount,

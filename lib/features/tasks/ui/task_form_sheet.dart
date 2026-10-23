@@ -135,7 +135,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       if (!mounted) return;
 
       final currentUserId = context.read<AuthBloc>().state.user?.id;
-      final assignees = [...project.members];
+      final assignees = project.members.where((user) => user.isActive).toList();
       const roleOrder = {'manager': 0, 'employee': 1, 'admin': 2};
       assignees.sort((a, b) {
         final aIsCurrentUser = a.id == currentUserId;

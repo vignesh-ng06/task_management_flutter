@@ -13,6 +13,10 @@ class UsersLoadRequested extends UserEvent {
   List<Object?> get props => [includeInactive];
 }
 
+class UsersLoadMoreRequested extends UserEvent {
+  const UsersLoadMoreRequested();
+}
+
 class UserCreateRequested extends UserEvent {
   final String email;
   final String password;
@@ -50,6 +54,13 @@ class UserUpdateRequested extends UserEvent {
 class UserDeactivateRequested extends UserEvent {
   final int id;
   const UserDeactivateRequested(this.id);
+  @override
+  List<Object?> get props => [id];
+}
+
+class UserActivateRequested extends UserEvent {
+  final int id;
+  const UserActivateRequested(this.id);
   @override
   List<Object?> get props => [id];
 }
